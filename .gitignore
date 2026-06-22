@@ -3,8 +3,17 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# dataset
+# *.jpg
+*.jpeg
+*.png
+data/processed/
+
 # C extensions
 *.so
+*.xml
+*.iml
+cmake-build-debug/
 
 # Distribution / packaging
 .Python
