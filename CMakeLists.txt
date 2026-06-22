@@ -8,6 +8,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 add_library(
         pa_ml SHARED
         src/api/ml_library.c
+        src/api/ml_library.h
 )
 
 target_include_directories(
