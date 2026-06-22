@@ -182,6 +182,7 @@ dependencies = [
     { name = "plotly" },
     { name = "seaborn" },
     { name = "tensorboard" },
+    { name = "tqdm" },
 ]
 
 [package.metadata]
@@ -195,6 +196,7 @@ requires-dist = [
     { name = "plotly", specifier = ">=6.8.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "tensorboard", specifier = ">=2.20.0" },
+    { name = "tqdm", specifier = ">=4.68.3" },
 ]
 
 [[package]]
