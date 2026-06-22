@@ -8,8 +8,11 @@ import numpy as np
 def load_library():
     os.add_dll_directory(r"C:\mingw64\bin")
 
+    cmake_build = "cmake-build-debug"
+    # cmake_build = "cmake-build-release"
+
     project_root = Path(__file__).resolve().parents[2]
-    dll_path = project_root / "cmake-build-debug" / "libpa_ml.dll"
+    dll_path = project_root / cmake_build / "libpa_ml.dll"
 
     if not dll_path.exists():
         raise FileNotFoundError(f"Bibliothèque introuvable: {dll_path}")
