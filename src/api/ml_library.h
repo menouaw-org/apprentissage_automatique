@@ -9,12 +9,31 @@
 #define DLLEXPORT
 #endif
 
-typedef struct LinearModel LinearModel;
-
 DLLEXPORT int32_t my_add(int32_t a, int32_t b);
-DLLEXPORT LinearModel* create_linear_model(float a, float b);
-DLLEXPORT float predict_linear_model(const LinearModel* model);
-DLLEXPORT void release_linear_model(LinearModel* model);
+
+DLLEXPORT void* create_linear_model(
+    int32_t input_size,
+    int32_t output_size,
+    int32_t task_type
+);
+
+DLLEXPORT int32_t train_linear_model(
+    void* model,
+    const double* x,
+    const double* y,
+    int32_t n_samples,
+    double learning_rate,
+    int32_t epochs
+);
+
+DLLEXPORT int32_t predict_linear_model(
+    void* model,
+    const double* x,
+    double* y_pred
+);
+
+DLLEXPORT void destroy_linear_model(void* model);
+
 DLLEXPORT float sum_array(const float* array, int32_t array_length);
 
 #endif

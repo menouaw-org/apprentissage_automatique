@@ -1,38 +1,48 @@
 #include "ml_library.h"
+#include "../linear/linear_model.h"
 
 #include <stdlib.h>
-
-struct LinearModel {
-    float a;
-    float b;
-};
 
 DLLEXPORT int32_t my_add(int32_t a, int32_t b) {
     return a + b;
 }
 
-DLLEXPORT LinearModel* create_linear_model(float a, float b) {
-    LinearModel* model = malloc(sizeof(LinearModel));
-    if (model == NULL) {
-        return NULL;
-    }
-
-    model->a = a;
-    model->b = b;
-
-    return model;
+DLLEXPORT void* create_linear_model(
+    int32_t input_size,
+    int32_t output_size,
+    int32_t task_type
+) {
+    return linear_model_create(input_size, output_size, task_type);
 }
 
-DLLEXPORT float predict_linear_model(const LinearModel* model) {
-    if (model == NULL) {
-        return 0.0f;
-    }
-
-    return model->a + model->b;
+DLLEXPORT int32_t train_linear_model(
+    void* model,
+    const double* x,
+    const double* y,
+    int32_t n_samples,
+    double learning_rate,
+    int32_t epochs
+) {
+    return linear_model_train(
+        (LinearModel*) model,
+        x,
+        y,
+        n_samples,
+        learning_rate,
+        epochs
+    );
 }
 
-DLLEXPORT void release_linear_model(LinearModel* model) {
-    free(model);
+DLLEXPORT int32_t predict_linear_model(
+    void* model,
+    const double* x,
+    double* y_pred
+) {
+    return linear_model_predict((const LinearModel*) model, x, y_pred);
+}
+
+DLLEXPORT void destroy_linear_model(void* model) {
+    linear_model_destroy((LinearModel*) model);
 }
 
 DLLEXPORT float sum_array(const float* array, int32_t array_length) {
