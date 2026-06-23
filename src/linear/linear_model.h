@@ -28,11 +28,10 @@
  *   x20, x21
  * ]
  *
- * Exemple pour output_size = 2 et n_samples = 3:
+ * Exemple pour output_size = 3 et n_samples = 2:
  * y = [
- *   y00, y01,
- *   y10, y11,
- *   y20, y21
+ *   y00, y01, y02,
+ *   y10, y11, y12
  * ]
  */
 

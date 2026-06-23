@@ -67,6 +67,49 @@ static int32_t linear_model_compute_scores(
     return LINEAR_MODEL_SUCCESS;
 }
 
+static double linear_model_binary_class_from_score(double score) {
+    if (score >= 0.0) {
+        return 1.0;
+    }
+
+    return -1.0;
+}
+
+static int32_t linear_model_scores_to_classes(
+    const LinearModel* model,
+    const double* scores,
+    double* y_pred
+) {
+    if (model == NULL || scores == NULL || y_pred == NULL) {
+        return LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (model->output_size == 1) {
+        y_pred[0] = linear_model_binary_class_from_score(scores[0]);
+        return LINEAR_MODEL_SUCCESS;
+    }
+
+    int32_t best_output = 0;
+    double best_score = scores[0];
+
+    for (int32_t output = 1; output < model->output_size; output++) {
+        if (scores[output] > best_score) {
+            best_score = scores[output];
+            best_output = output;
+        }
+    }
+
+    for (int32_t output = 0; output < model->output_size; output++) {
+        if (output == best_output) {
+            y_pred[output] = 1.0;
+        } else {
+            y_pred[output] = -1.0;
+        }
+    }
+
+    return LINEAR_MODEL_SUCCESS;
+}
+
 LinearModel* linear_model_create(
     int32_t input_size,
     int32_t output_size,
@@ -109,7 +152,24 @@ int32_t linear_model_predict(
     const double* x,
     double* y_pred
 ) {
-    return linear_model_compute_scores(model, x, y_pred);
+    if (model == NULL || x == NULL || y_pred == NULL) {
+        return LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    int32_t score_status = linear_model_compute_scores(model, x, y_pred);
+    if (score_status != LINEAR_MODEL_SUCCESS) {
+        return score_status;
+    }
+
+    if (model->task_type == LINEAR_TASK_REGRESSION) {
+        return LINEAR_MODEL_SUCCESS;
+    }
+
+    if (model->task_type == LINEAR_TASK_CLASSIFICATION) {
+        return linear_model_scores_to_classes(model, y_pred, y_pred);
+    }
+
+    return LINEAR_MODEL_ERROR_UNSUPPORTED_TASK;
 }
 
 int32_t linear_model_train(
