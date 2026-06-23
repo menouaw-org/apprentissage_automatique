@@ -9,12 +9,62 @@ struct LinearModel {
     double* weights;
 };
 
+static int32_t linear_model_is_supported_task(int32_t task_type) {
+    return (
+        task_type == LINEAR_TASK_REGRESSION ||
+        task_type == LINEAR_TASK_CLASSIFICATION
+    );
+}
+
+static int32_t linear_model_weight_count_from_dimensions(
+    int32_t input_size,
+    int32_t output_size
+) {
+    if (input_size <= 0 || output_size <= 0) {
+        return 0;
+    }
+
+    return (input_size + 1) * output_size;
+}
+
 static int32_t linear_model_weight_count(const LinearModel* model) {
     if (model == NULL) {
         return 0;
     }
 
-    return (model->input_size + 1) * model->output_size;
+    return linear_model_weight_count_from_dimensions(
+        model->input_size,
+        model->output_size
+    );
+}
+
+static int32_t linear_model_compute_scores(
+    const LinearModel* model,
+    const double* x,
+    double* scores
+) {
+    if (model == NULL || x == NULL || scores == NULL) {
+        return LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    int32_t stride = model->input_size + 1;
+
+    for (int32_t output = 0; output < model->output_size; output++) {
+        int32_t output_offset = output * stride;
+        double sum = 0.0;
+
+        for (int32_t input = 0; input < model->input_size; input++) {
+            int32_t weight_index = output_offset + input;
+            sum += model->weights[weight_index] * x[input];
+        }
+
+        int32_t bias_index = output_offset + model->input_size;
+        sum += model->weights[bias_index];
+
+        scores[output] = sum;
+    }
+
+    return LINEAR_MODEL_SUCCESS;
 }
 
 LinearModel* linear_model_create(
@@ -26,10 +76,7 @@ LinearModel* linear_model_create(
         return NULL;
     }
 
-    if (
-        task_type != LINEAR_TASK_REGRESSION &&
-        task_type != LINEAR_TASK_CLASSIFICATION
-    ) {
+    if (!linear_model_is_supported_task(task_type)) {
         return NULL;
     }
 
@@ -43,7 +90,12 @@ LinearModel* linear_model_create(
     model->task_type = task_type;
 
     int32_t weight_count = linear_model_weight_count(model);
-    model->weights = calloc(weight_count, sizeof(double));
+    if (weight_count <= 0) {
+        free(model);
+        return NULL;
+    }
+
+    model->weights = calloc((size_t) weight_count, sizeof(double));
     if (model->weights == NULL) {
         free(model);
         return NULL;
@@ -57,27 +109,7 @@ int32_t linear_model_predict(
     const double* x,
     double* y_pred
 ) {
-    if (model == NULL || x == NULL || y_pred == NULL) {
-        return -1;
-    }
-
-    int32_t stride = model->input_size + 1;
-
-    for (int32_t output = 0; output < model->output_size; output++) {
-        double sum = 0.0;
-
-        for (int32_t input = 0; input < model->input_size; input++) {
-            int32_t weight_index = output * stride + input;
-            sum += model->weights[weight_index] * x[input];
-        }
-
-        int32_t bias_index = output * stride + model->input_size;
-        sum += model->weights[bias_index];
-
-        y_pred[output] = sum;
-    }
-
-    return 0;
+    return linear_model_compute_scores(model, x, y_pred);
 }
 
 int32_t linear_model_train(
@@ -96,11 +128,11 @@ int32_t linear_model_train(
         learning_rate <= 0.0 ||
         epochs <= 0
     ) {
-        return -1;
+        return LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
     }
 
     if (model->task_type != LINEAR_TASK_REGRESSION) {
-        return -2;
+        return LINEAR_MODEL_ERROR_UNSUPPORTED_TASK;
     }
 
     int32_t stride = model->input_size + 1;
@@ -111,21 +143,24 @@ int32_t linear_model_train(
             const double* y_sample = y + sample * model->output_size;
 
             for (int32_t output = 0; output < model->output_size; output++) {
+                int32_t output_offset = output * stride;
                 double prediction = 0.0;
 
                 for (int32_t input = 0; input < model->input_size; input++) {
-                    int32_t weight_index = output * stride + input;
+                    int32_t weight_index = output_offset + input;
                     prediction += model->weights[weight_index] * x_sample[input];
                 }
 
-                int32_t bias_index = output * stride + model->input_size;
+                int32_t bias_index = output_offset + model->input_size;
                 prediction += model->weights[bias_index];
 
                 double error = prediction - y_sample[output];
 
                 for (int32_t input = 0; input < model->input_size; input++) {
-                    int32_t weight_index = output * stride + input;
-                    model->weights[weight_index] -= learning_rate * error * x_sample[input];
+                    int32_t weight_index = output_offset + input;
+                    model->weights[weight_index] -= (
+                        learning_rate * error * x_sample[input]
+                    );
                 }
 
                 model->weights[bias_index] -= learning_rate * error;
@@ -133,7 +168,7 @@ int32_t linear_model_train(
         }
     }
 
-    return 0;
+    return LINEAR_MODEL_SUCCESS;
 }
 
 void linear_model_destroy(LinearModel* model) {
