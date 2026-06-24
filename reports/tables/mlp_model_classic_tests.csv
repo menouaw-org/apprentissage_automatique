@@ -1,0 +1,7 @@
+case_name,family,expected,observed,status,accuracy,architecture,comment
+Linear Simple,classification,OK,OK,validé,1.0000,2 -> 2 -> 1,cas linéaire simple du professeur
+Linear Multiple,classification,OK,OK,validé,1.0000,2 -> 2 -> 1,cas linéaire multiple du professeur
+XOR,classification_non_linear,OK,OK,validé,1.0000,2 -> 4 -> 1,preuve minimale de non-linéarité
+Cross,classification_non_linear,OK,OK,validé,0.9960,2 -> 8 -> 1,cas non linéaire dense du professeur
+Multi Linear 3 classes,classification_multiclass,OK,OK,validé,1.0000,2 -> 4 -> 3,cas multi-classes le plus proche du périmètre dog/cat/others
+Multi Cross,classification_multiclass_non_linear,OK à confirmer,KO,à analyser,0.5240,2 -> 8 -> 6 -> 3,cas multi-classes non linéaire; architecture à ajuster si nécessaire

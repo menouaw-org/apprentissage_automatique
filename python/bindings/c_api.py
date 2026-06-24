@@ -17,6 +17,7 @@ def load_library() -> ctypes.CDLL:
             os.add_dll_directory(str(mingw_bin))
 
     cmake_build = "cmake-build-debug"
+    # cmake_build = "cmake-build-release"
     project_root = Path(__file__).resolve().parents[2]
     dll_path = project_root / cmake_build / "libpa_ml.dll"
 

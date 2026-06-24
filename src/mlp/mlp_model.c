@@ -45,7 +45,7 @@ static double mlp_model_initial_weight(
 ) {
     int32_t pattern = ((layer + 1) * 31 + (weight_index + 1) * 17) % 100;
     double centered = ((double) pattern / 100.0) - 0.5;
-    double value = centered * 0.2;
+    double value = centered * 1.0;
 
     if (value == 0.0) {
         return 0.01;
