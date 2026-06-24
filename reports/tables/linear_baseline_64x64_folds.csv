@@ -1,0 +1,6 @@
+experiment,dataset,fold,train_accuracy,validation_accuracy,train_loss,validation_loss,notes
+Linéaire — baseline — 64x64,dataset_v1_64x64,0,0.3936320754716981,0.3945386064030132,0.6063679245283019,0.6054613935969868,"loss=1-accuracy car l’API actuelle expose la prédiction bipolaire, pas les scores bruts ni une fonction de perte."
+Linéaire — baseline — 64x64,dataset_v1_64x64,1,0.3938679245283019,0.3935969868173258,0.6061320754716981,0.6064030131826742,"loss=1-accuracy car l’API actuelle expose la prédiction bipolaire, pas les scores bruts ni une fonction de perte."
+Linéaire — baseline — 64x64,dataset_v1_64x64,2,0.39368222536539366,0.39433962264150946,0.6063177746346063,0.6056603773584905,"loss=1-accuracy car l’API actuelle expose la prédiction bipolaire, pas les scores bruts ni une fonction de perte."
+Linéaire — baseline — 64x64,dataset_v1_64x64,3,0.39382512373320766,0.3909348441926346,0.6061748762667923,0.6090651558073654,"loss=1-accuracy car l’API actuelle expose la prédiction bipolaire, pas les scores bruts ni une fonction de perte."
+Linéaire — baseline — 64x64,dataset_v1_64x64,4,0.39476785293424466,0.3947119924457035,0.6052321470657553,0.6052880075542966,"loss=1-accuracy car l’API actuelle expose la prédiction bipolaire, pas les scores bruts ni une fonction de perte."
