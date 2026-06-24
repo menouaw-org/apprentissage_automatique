@@ -1,41 +1,57 @@
-# PA-ML — Bibliothèque d"apprentissage automatique en C avec orchestration Python
+# PA-ML — Bibliothèque d'apprentissage automatique en C avec orchestration Python
 
 ## Présentation
 
-Ce projet a pour objectif de construire une bibliothèque d'apprentissage automatique en **C**, puis de l’exploiter depuis **Python** pour préparer les données, lancer les expérimentations, analyser les résultats et produire une démonstration.
+Ce projet a pour objectif de construire une bibliothèque d'apprentissage automatique en **C**, puis de l'exploiter depuis **Python** pour préparer les données, lancer les expérimentations, analyser les résultats et produire une démonstration.
 
 Le projet est organisé autour de trois objectifs principaux:
 
 1. implémenter progressivement plusieurs modèles de machine learning en C;
-2. utiliser Python comme couche d’orchestration, de validation, de notebooks et de visualisation;
+2. utiliser Python comme couche d'orchestration, de validation, de notebooks, de visualisation et de démonstration;
 3. conserver une trace reproductible des jeux de données, des expériences, des résultats et des décisions.
 
-Le premier périmètre technique validé concerne la mise en place de l’environnement:
-- structure du dépôt;
-- environnement Python avec `uv`;
-- compilation d’une bibliothèque C dynamique avec CMake;
-- génération de `libpa_ml.dll` sous Windows;
-- appel de fonctions C depuis Python avec `ctypes`;
-- préparation du jeu de données image;
-- création d’un protocole expérimental de départ.
+Le périmètre déjà validé couvre:
+
+- la structure du dépôt;
+- l'environnement Python avec `uv`;
+- la compilation d'une bibliothèque C dynamique avec CMake;
+- la génération de `libpa_ml.dll` sous Windows;
+- l'appel de fonctions C depuis Python avec `ctypes`;
+- la préparation du jeu de données image `dog` / `cat` / `others`;
+- la séparation stable du jeu de données avec `test.csv` final et validation croisée 5 plis;
+- l'interface technique du modèle linéaire;
+- les conventions de données C / Python;
+- la prédiction multi-sorties;
+- l'apprentissage multi-classes;
+- les cas professeur du modèle linéaire;
+- une première baseline linéaire sur `dataset_v1_64x64`.
+
+Le modèle linéaire est actuellement utilisé comme **baseline explicable** avant les modèles non linéaires, notamment le MLP.
 
 ## Pile technique
 
 ### Langages
 
-- C: cœur algorithmique et future bibliothèque de machine learning.
-- Python: scripts, bindings `ctypes`, notebooks, prétraitement des données, expérimentation et démonstration.
+- **C**: cœur algorithmique, modèles et bibliothèque dynamique.
+- **Python**: scripts, bindings `ctypes`, notebooks, prétraitement des données, expérimentation, visualisation et démonstration.
 
 ### Outils principaux
 
-- Git / GitHub: versionnement et collaboration.
-- CLion: développement C, configuration CMake, compilation Debug / Release.
-- PyCharm: développement Python, scripts, notebooks et orchestration.
-- CMake: configuration du build C.
-- MinGW GCC: compilation C sous Windows.
-- Ninja: moteur de build utilisé par CLion / CMake.
-- GDB: débogage C.
-- uv: gestion de l’environnement Python et des dépendances.
+- **Git / GitHub**: versionnement et collaboration.
+- **CLion**: développement C, configuration CMake, compilation Debug / Release.
+- **PyCharm**: développement Python, scripts, notebooks, orchestration et visualisation de CSV.
+- **CMake**: configuration du build C.
+- **MinGW GCC**: compilation C sous Windows.
+- **Ninja**: moteur de build utilisé par CLion / CMake.
+- **GDB**: débogage C.
+- **uv**: gestion de l'environnement Python et des dépendances.
+- **ctypes**: interface entre Python et la bibliothèque C.
+- **NumPy**: tableaux numériques et conventions de données.
+- **Pillow / OpenCV**: chargement et prétraitement des images.
+- **pandas**: analyse des CSV expérimentaux.
+- **Matplotlib / Plotly**: visualisation des métriques et figures.
+- **tqdm**: barres de progression pour les traitements longs.
+- **Gradio**: démonstration applicative prévue.
 
 ### Configuration locale validée
 
@@ -52,7 +68,7 @@ La configuration locale utilisée pour le projet est la suivante:
 - type de projet CLion: `C Library`;
 - cible principale CMake: bibliothèque partagée.
 
-Le terminal externe peut ne pas reconnaître `cmake` si le CMake intégré à CLion n’est pas présent dans le `PATH`. Ce n’est pas bloquant: la compilation peut être faite depuis CLion.
+Le terminal externe peut ne pas reconnaître `cmake` si le CMake intégré à CLion n'est pas présent dans le `PATH`. Ce n'est pas bloquant: la compilation peut être faite depuis CLion.
 
 ## Arborescence du projet
 
@@ -66,8 +82,16 @@ pa-ml/
 ├── .gitignore
 ├── data/
 │   ├── raw/
+│   │   ├── dog/
+│   │   ├── cat/
+│   │   └── others/
 │   ├── processed/
+│   │   ├── 32x32/
+│   │   ├── 64x64/
+│   │   └── 128x128/
 │   └── splits/
+│       ├── test.csv
+│       └── folds.csv
 ├── models/
 │   ├── linear/
 │   ├── mlp/
@@ -76,6 +100,8 @@ pa-ml/
 ├── src/
 │   ├── core/
 │   ├── linear/
+│   │   ├── linear_model.c
+│   │   └── linear_model.h
 │   ├── mlp/
 │   ├── rbf/
 │   ├── svm/
@@ -85,6 +111,11 @@ pa-ml/
 ├── tests/
 │   ├── c/
 │   └── python/
+│       ├── test_linear_interface.py
+│       ├── test_linear_data_conventions.py
+│       ├── test_linear_multiclass_predict.py
+│       ├── test_linear_multiclass_training.py
+│       └── test_linear_model_cases.py
 ├── notebooks/
 │   ├── 00_dataset_exploration.ipynb
 │   ├── 01_linear_model.ipynb
@@ -97,11 +128,20 @@ pa-ml/
 │   │   ├── __init__.py
 │   │   └── c_api.py
 │   ├── data/
+│   │   ├── resize.py
+│   │   └── split.py
 │   ├── experiments/
+│   │   └── run_linear_baseline_64x64.py
 │   └── app/
 ├── reports/
 │   ├── figures/
+│   │   ├── confusion_matrices/
+│   │   ├── learning_curves/
+│   │   └── comparisons/
 │   ├── tables/
+│   │   ├── linear_model_classic_tests.csv
+│   │   ├── linear_baseline_64x64_folds.csv
+│   │   └── linear_baseline_64x64_history.csv
 │   └── experiment_log.md
 └── scripts/
 ~~~
@@ -112,20 +152,20 @@ pa-ml/
 |---|---|
 | `src/api/` | Interface C exposée à Python via `ctypes`. |
 | `src/core/` | Fonctions communes: matrices, données, métriques, utilitaires. |
-| `src/linear/` | Futur modèle linéaire. |
+| `src/linear/` | Implémentation du modèle linéaire. |
 | `src/mlp/` | Futur perceptron multicouches. |
 | `src/rbf/` | Futur modèle RBF. |
 | `src/svm/` | Futur SVM ou modèle alternatif. |
 | `python/bindings/` | Chargement de la bibliothèque C et déclaration des signatures `ctypes`. |
-| `python/data/` | Chargement, préparation et séparation des données. |
-| `python/experiments/` | Scripts d’expérimentation et de suivi. |
+| `python/data/` | Chargement, préparation, redimensionnement et séparation des données. |
+| `python/experiments/` | Scripts d'expérimentation et de suivi. |
 | `python/app/` | Application de démonstration, par exemple avec Gradio. |
 | `notebooks/` | Exploration, expérimentation et analyse comparative. |
-| `data/raw/` | Images brutes conservées dans leur forme d’origine. |
+| `data/raw/` | Images brutes conservées dans leur forme d'origine. |
 | `data/processed/` | Images redimensionnées et préparées. |
-| `data/splits/` | Fichiers de séparation train / validation / test. |
+| `data/splits/` | Fichiers de séparation test final et validation croisée. |
 | `models/` | Modèles sauvegardés. |
-| `reports/` | Figures, tableaux, résultats et traces d’expériences. |
+| `reports/` | Figures, tableaux, résultats et traces d'expériences. |
 | `tests/` | Tests C et Python. |
 
 ## Installation
@@ -139,15 +179,15 @@ cd pa-ml
 
 ### 2. Installer uv
 
-Si `uv` n’est pas encore installé, suivre la documentation officielle de `uv` ou l’installer avec la méthode adaptée au poste.
+Si `uv` n'est pas encore installé, suivre la documentation officielle de `uv` ou l'installer avec la méthode adaptée au poste.
 
-Vérifier l’installation:
+Vérifier l'installation:
 
 ~~~bash
 uv --version
 ~~~
 
-### 3. Synchroniser l’environnement Python
+### 3. Synchroniser l'environnement Python
 
 Depuis la racine du projet:
 
@@ -155,13 +195,13 @@ Depuis la racine du projet:
 uv sync
 ~~~
 
-Si le projet vient d’être initialisé et que les dépendances doivent être ajoutées:
+Si les dépendances doivent être ajoutées:
 
 ~~~bash
 uv add numpy pandas pillow opencv-python plotly matplotlib seaborn tensorboard gradio tqdm
 ~~~
 
-### 4. Vérifier l’environnement Python
+### 4. Vérifier l'environnement Python
 
 ~~~bash
 uv run python --version
@@ -175,22 +215,15 @@ La bibliothèque C est compilée sous forme de bibliothèque dynamique Windows:
 libpa_ml.dll
 ~~~
 
-Le projet utilise CMake et une cible de type bibliothèque partagée:
+Le projet utilise CMake et une cible de type bibliothèque partagée.
 
-~~~cmake
-add_library(
-        pa_ml SHARED
-        src/api/ml_library.c
-)
-~~~
-
-## Compilation avec CLion
+### Compilation avec CLion
 
 La méthode recommandée est de compiler depuis CLion.
 
-### Profil Debug
+#### Profil Debug
 
-Le profil `Debug` sert au développement, au débogage et à la validation rapide de l’interopérabilité C / Python.
+Le profil `Debug` sert au développement, au débogage et à la validation rapide de l'interopérabilité C / Python.
 
 Procédure:
 
@@ -203,7 +236,7 @@ Procédure:
 cmake-build-debug/libpa_ml.dll
 ~~~
 
-### Profil Release
+#### Profil Release
 
 Le profil `Release` sert aux versions optimisées.
 
@@ -218,26 +251,18 @@ Procédure:
 cmake-build-release/libpa_ml.dll
 ~~~
 
-La configuration Release par défaut de CLion / CMake est suffisante à ce stade. Aucun flag personnalisé comme `-O3`, `-march=native` ou `-ffast-math` n’est ajouté pour l’instant.
+La configuration Release par défaut de CLion / CMake est suffisante à ce stade. Les flags plus agressifs doivent être envisagés seulement après mesure des performances, comparaison Debug / Release et vérification de la stabilité numérique.
 
-Les flags plus agressifs devront être envisagés seulement après:
-- mesure des performances;
-- comparaison Debug / Release;
-- vérification de la stabilité numérique;
-- validation du fait que le binaire reste exploitable par le groupe.
+### Compilation en terminal
 
-## Compilation en terminal
-
-Les commandes CMake équivalentes sont les suivantes.
-
-### Debug
+#### Debug
 
 ~~~bash
 cmake -S . -B cmake-build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build cmake-build-debug
 ~~~
 
-### Release
+#### Release
 
 ~~~bash
 cmake -S . -B cmake-build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -252,11 +277,10 @@ Si le terminal affiche:
 bash: cmake: command not found
 ~~~
 
-cela signifie que le terminal ne trouve pas l’exécutable `cmake`.
-
-Ce problème ne remet pas en cause la configuration CLion. CLion peut utiliser son CMake intégré sans que celui-ci soit disponible dans un terminal externe.
+cela signifie que le terminal ne trouve pas l'exécutable `cmake`.
 
 Solutions possibles:
+
 - compiler depuis CLion;
 - utiliser le terminal intégré de CLion;
 - ajouter CMake et Ninja au `PATH`;
@@ -269,75 +293,140 @@ where.exe cmake
 where.exe ninja
 ~~~
 
-## Validation Python / C
+## Interface Python / C
 
-Le fichier de validation minimal est:
+Le fichier principal de bindings est:
 
 ~~~plain text
 python/bindings/c_api.py
 ~~~
 
-Il charge `libpa_ml.dll` avec `ctypes`, déclare les signatures des fonctions C exposées et vérifie les appels suivants:
-- appel d’une fonction simple `my_add`;
-- création d’un pointeur opaque `LinearModel*`;
-- prédiction minimale via ce pointeur;
-- libération du pointeur;
-- transmission d’un tableau `numpy.float32` vers une fonction C.
+Il charge `libpa_ml.dll` avec `ctypes`, déclare les signatures des fonctions C exposées et fournit les utilitaires Python nécessaires pour transmettre des tableaux NumPy au C.
 
-### Lancer la validation
+### Gestion du chemin de la DLL
+
+Le chargement de la DLL doit être calculé depuis l'emplacement réel de `c_api.py`, afin d'éviter les chemins relatifs fragiles.
+
+Le chargement doit notamment:
+
+- ajouter `C:\mingw64\bin` aux dossiers DLL Windows;
+- chercher la DLL dans `cmake-build-debug/` ou `cmake-build-release/`;
+- échouer explicitement si la DLL attendue est absente.
+
+## Modèle linéaire
+
+Le modèle linéaire est le premier modèle implémenté et validé.
+
+Il couvre actuellement:
+
+- création d'un modèle linéaire;
+- régression simple;
+- régression à plusieurs entrées;
+- classification binaire;
+- classification multi-sorties;
+- apprentissage multi-classes;
+- prédiction avec sorties bipolaires;
+- libération mémoire.
+
+### Convention des sorties de classification
+
+Les sorties de classification utilisent une convention bipolaire:
+
+| Valeur | Signification |
+|---:|---|
+| `+1.0` | classe positive / classe prédite |
+| `-1.0` | classe négative |
+
+Pour les trois classes du projet:
+
+| Classe | Cible bipolaire |
+|---|---|
+| `dog` | `[+1.0, -1.0, -1.0]` |
+| `cat` | `[-1.0, +1.0, -1.0]` |
+| `others` | `[-1.0, -1.0, +1.0]` |
+
+### Point de vigilance sur les labels one-hot
+
+Une erreur potentielle a été identifiée dans la normalisation des cibles de classification côté C: une cible `0.0` pouvait être convertie en `+1.0` si la règle était `target >= 0.0`.
+
+Cette convention est dangereuse avec les labels one-hot classiques:
+
+~~~plain text
+[1.0, 0.0, 0.0]
+~~~
+
+car ils peuvent devenir:
+
+~~~plain text
+[1.0, 1.0, 1.0]
+~~~
+
+au lieu de:
+
+~~~plain text
+[1.0, -1.0, -1.0]
+~~~
+
+La correction recommandée est:
+
+| Label reçu | Label interne |
+|---:|---:|
+| `1.0` | `+1.0` |
+| `0.0` | `-1.0` |
+| `-1.0` | `-1.0` |
+| autre valeur | erreur |
+
+Après correction, il faut relancer les tests du modèle linéaire puis confirmer la baseline.
+
+## Tests
+
+Les tests Python actuellement utilisés pour le modèle linéaire sont:
+
+~~~plain text
+tests/python/test_linear_interface.py
+tests/python/test_linear_data_conventions.py
+tests/python/test_linear_multiclass_predict.py
+tests/python/test_linear_multiclass_training.py
+tests/python/test_linear_model_cases.py
+~~~
+
+### Lancer les tests techniques
 
 ~~~bash
-uv run python/bindings/c_api.py
+uv run python tests/python/test_linear_interface.py
+uv run python tests/python/test_linear_data_conventions.py
+uv run python tests/python/test_linear_multiclass_predict.py
+uv run python tests/python/test_linear_multiclass_training.py
 ~~~
 
-### Résultat attendu
+Résultats attendus:
 
 ~~~plain text
-55
-93.0
-110.0
+Test d'interface linéaire réussi.
+Test de conventions de données réussi.
+Test de prédiction multi-sorties réussi.
+Test d'apprentissage multi-classes réussi.
 ~~~
 
-Si ce résultat s’affiche, cela valide que:
-- la DLL est trouvée;
-- les dépendances MinGW sont accessibles;
-- les symboles C sont exportés;
-- Python peut appeler la bibliothèque C;
-- les types simples, pointeurs opaques et tableaux traversent correctement la frontière C / Python.
+### Lancer les cas professeur
 
-## Gestion du chemin de la DLL
-
-Le chargement de la DLL doit être calculé depuis l’emplacement réel du fichier `c_api.py`, afin d’éviter les chemins relatifs fragiles.
-
-Version minimale actuelle:
-
-~~~python
-import ctypes
-import os
-from pathlib import Path
-
-import numpy as np
-
-
-def load_library():
-    os.add_dll_directory(r"C:\mingw64\bin")
-
-    project_root = Path(__file__).resolve().parents[2]
-    dll_path = project_root / "cmake-build-debug" / "libpa_ml.dll"
-
-    if not dll_path.exists():
-        raise FileNotFoundError(f"Bibliothèque introuvable: {dll_path}")
-
-    return ctypes.CDLL(str(dll_path))
+~~~bash
+uv run python tests/python/test_linear_model_cases.py
 ~~~
 
-Si la DLL Release doit être testée, adapter le chemin vers:
+Le script produit:
 
 ~~~plain text
-cmake-build-release/libpa_ml.dll
+reports/tables/linear_model_classic_tests.csv
 ~~~
 
-Une amélioration prévue consiste à ajouter un choix de build `Debug` / `Release` via une variable d’environnement, pour ne pas modifier le code à la main.
+Les cas professeur servent à vérifier:
+
+- les cas linéaires de classification attendus `OK`;
+- les cas linéaires de régression attendus `OK`;
+- la classification multi-classes à trois sorties;
+- les cas non linéaires attendus `KO`;
+- l'absence de bug probable sur les cas simples.
 
 ## Jeu de données
 
@@ -365,12 +454,12 @@ Les classes finales sont:
 
 ### Volumes après filtrage
 
-| Classe | Nombre d’images |
+| Classe | Nombre d'images |
 |---|---:|
 | `dog` | 2114 |
 | `cat` | 1668 |
 | `others` | 2457 |
-| Total | 6239 |
+| **Total** | **6239** |
 
 ### Organisation des données
 
@@ -421,7 +510,7 @@ La résolution de départ pour les premières expériences est:
 
 ### Redimensionnement
 
-Le redimensionnement conserve le ratio de l’image et ajoute un padding noir si nécessaire. Cette règle évite de déformer les animaux.
+Le redimensionnement conserve le ratio de l'image et ajoute un padding noir si nécessaire. Cette règle évite de déformer les animaux.
 
 ## Protocole expérimental
 
@@ -431,7 +520,7 @@ La séparation des données doit rester stable pour permettre des comparaisons f
 
 - test final: 15% du jeu de données;
 - développement: 85% restants;
-- validation croisée: 5 folds stratifiés sur les 85%;
+- validation croisée: 5 plis stratifiés sur les 85%;
 - graine aléatoire: `42`.
 
 ### Fichiers de split
@@ -444,12 +533,124 @@ data/splits/folds.csv
 ### Règles importantes
 
 - Le jeu de test final ne doit pas être utilisé pour choisir un modèle ou régler des hyperparamètres.
-- Les comparaisons pendant le développement doivent utiliser les folds de validation.
+- Les comparaisons pendant le développement doivent utiliser les plis de validation.
 - Toute modification des données, des splits ou du prétraitement doit être documentée.
 - Une expérience échouée doit être conservée et analysée.
-- Les résultats doivent être tracés dans le carnet d’expérimentations.
+- Les résultats doivent être tracés dans le carnet d'expérimentations.
 
-## Carnet d’expérimentations
+## Baseline linéaire 64x64
+
+La première baseline image utilise le modèle linéaire sur les pixels bruts `64x64`.
+
+### Script
+
+~~~plain text
+python/experiments/run_linear_baseline_64x64.py
+~~~
+
+Le script:
+
+- lit `data/splits/folds.csv`;
+- ne charge pas `data/splits/test.csv`;
+- charge les images depuis `data/processed/64x64/`;
+- convertit les images en RGB;
+- vectorise les pixels;
+- normalise les valeurs entre `0.0` et `1.0`;
+- encode les classes en sorties bipolaires;
+- entraîne le modèle sur un ou plusieurs plis;
+- enregistre les métriques et figures;
+- utilise `tqdm` pour les traitements longs.
+
+### Commande de contrôle
+
+~~~bash
+uv run python python/experiments/run_linear_baseline_64x64.py --fold 0 --epochs 1 --learning-rate 0.001
+~~~
+
+### Commande 5 plis
+
+~~~bash
+uv run python python/experiments/run_linear_baseline_64x64.py --fold all --epochs 5 --learning-rate 0.001
+~~~
+
+Une relance de diagnostic a aussi été effectuée sur 10 époques.
+
+### Artefacts produits
+
+~~~plain text
+reports/tables/linear_baseline_64x64_folds.csv
+reports/tables/linear_baseline_64x64_history.csv
+reports/figures/confusion_matrices/linear_baseline_64x64.png
+reports/figures/learning_curves/linear_baseline_64x64.png
+~~~
+
+### Résultat observé
+
+La baseline linéaire `64x64` donne une validation accuracy moyenne autour de:
+
+~~~plain text
+0.39
+~~~
+
+La matrice de confusion montre que le modèle prédit presque toujours:
+
+~~~plain text
+others
+~~~
+
+Interprétation:
+
+- la chaîne expérimentale fonctionne;
+- le modèle linéaire ne surapprend pas;
+- les courbes train / validation restent basses et proches;
+- le comportement correspond à un sous-apprentissage ou à une baseline majoritaire;
+- le modèle linéaire sur pixels bruts `64x64` ne sépare pas utilement `dog`, `cat` et `others`;
+- ce résultat reste utile comme baseline basse avant le MLP.
+
+### Analyse des CSV
+
+`linear_baseline_64x64_folds.csv` sert à comparer les résultats finaux par pli.
+
+Colonnes principales:
+
+~~~plain text
+fold
+train_accuracy
+validation_accuracy
+train_loss
+validation_loss
+~~~
+
+Vue recommandée dans PyCharm:
+
+- Categories: `fold`
+- Groups: aucun, ou `dataset` si un champ est requis
+- Values: `train_accuracy`, `validation_accuracy`
+- Stacked: désactivé
+- Horizontal: désactivé
+
+`linear_baseline_64x64_history.csv` sert à suivre l'évolution par époque.
+
+Colonnes principales:
+
+~~~plain text
+fold
+epoch
+train_accuracy
+validation_accuracy
+train_loss
+validation_loss
+~~~
+
+Vue recommandée dans PyCharm:
+
+- Categories: `epoch`
+- Groups: `fold`
+- Values: `train_accuracy`, `validation_accuracy`
+- Stacked: désactivé
+- Horizontal: désactivé
+
+## Carnet d'expérimentations
 
 Chaque expérience doit documenter au minimum:
 
@@ -467,12 +668,20 @@ Décision suivante:
 Fichiers associés:
 ~~~
 
-Les expériences doivent permettre de comprendre:
-- ce qui est testé;
-- pourquoi c’est testé;
-- avec quels réglages;
-- quels résultats sont observés;
-- quelle décision est prise ensuite.
+L'entrée actuelle importante est:
+
+~~~plain text
+Linéaire — baseline — 64x64
+~~~
+
+Elle documente:
+
+- l'hypothèse de départ;
+- les hyperparamètres;
+- les métriques moyennes;
+- la matrice de confusion;
+- le diagnostic de sous-apprentissage;
+- la décision suivante.
 
 ## Notebooks
 
@@ -498,8 +707,6 @@ reports/
 │   ├── confusion_matrices/
 │   └── comparisons/
 ├── tables/
-│   ├── metrics_by_fold.csv
-│   └── model_comparisons.csv
 └── experiment_log.md
 ~~~
 
@@ -534,6 +741,7 @@ Remove-Item -Recurse -Force cmake-build-debug, cmake-build-release -ErrorAction 
 Le terminal ne trouve pas CMake.
 
 Correction recommandée:
+
 - compiler depuis CLion;
 - ou ajouter CMake au `PATH`;
 - ou utiliser le terminal intégré de CLion.
@@ -541,6 +749,7 @@ Correction recommandée:
 ### `libpa_ml.dll` introuvable
 
 Vérifier que:
+
 - le projet a été compilé;
 - le bon profil CLion a été utilisé;
 - le fichier existe dans `cmake-build-debug/` ou `cmake-build-release/`;
@@ -556,34 +765,53 @@ Vérifier que le chemin suivant est bien ajouté avant `ctypes.CDLL`:
 os.add_dll_directory(r"C:\mingw64\bin")
 ~~~
 
-## Limites actuelles
+### Labels one-hot mal interprétés
+
+Si les labels Python utilisent `0.0` / `1.0`, vérifier que la normalisation C transforme:
+
+~~~plain text
+1.0  -> +1.0
+0.0  -> -1.0
+-1.0 -> -1.0
+~~~
+
+et refuse les valeurs ambiguës.
+
+## État actuel
 
 À ce stade:
-- la bibliothèque C minimale ne contient pas encore de vrai modèle de machine learning;
-- les fonctions exposées servent surtout à valider l’interopérabilité C / Python;
-- les modèles linéaire, MLP, RBF et SVM seront implémentés dans des tâches séparées;
-- les scripts de build terminal dépendent de la disponibilité de `cmake` et `ninja` dans le `PATH`;
-- la validation Python charge actuellement une DLL selon le chemin configuré dans `c_api.py`;
-- les flags d’optimisation avancés ne sont pas encore activés.
+
+- l'environnement de développement est en place;
+- la bibliothèque C compile sous forme de DLL;
+- Python charge la DLL avec `ctypes`;
+- le modèle linéaire est implémenté et testé;
+- les conventions de données sont documentées;
+- les cas professeur sont transformés en validation reproductible;
+- la baseline linéaire `64x64` est exécutée et analysée;
+- le résultat linéaire sert de baseline basse avant les modèles non linéaires.
 
 ## Actions restantes
 
-- Finaliser les scripts `scripts/` si le groupe souhaite une compilation hors CLion.
-- Ajouter un choix Debug / Release sans modification manuelle du chemin de DLL.
+- Corriger et sécuriser la normalisation des cibles de classification côté C pour accepter proprement `0.0`, `1.0` et `-1.0`.
+- Ajouter ou adapter un test Python dédié aux labels one-hot.
+- Relancer les tests du modèle linéaire après correction.
+- Confirmer la baseline linéaire après correction.
+- Passer au MLP comme premier modèle non linéaire.
 - Compléter les tests C.
-- Compléter les tests Python.
-- Implémenter les modèles dans des tâches dédiées.
-- Alimenter le carnet d’expérimentations à chaque essai.
-- Préparer la démonstration finale avec l’application Python.
+- Sauvegarder les modèles entraînés.
+- Préparer la démonstration finale avec Gradio.
+- Alimenter le carnet d'expérimentations à chaque essai.
 
 ## Règle de contribution
 
 Recommandations:
+
 - faire des commits courts et lisibles;
 - séparer les changements C, Python, données et documentation;
 - éviter de commiter les fichiers générés lourds;
 - documenter toute décision structurante;
-- vérifier que le projet compile avant de pousser une modification importante.
+- vérifier que le projet compile avant de pousser une modification importante;
+- relancer les tests Python après toute modification de l'interface C / Python ou du modèle linéaire.
 
 ## Commandes utiles
 
@@ -599,16 +827,27 @@ uv sync
 2. sélectionner `Debug` ou `Release`;
 3. lancer `Build`.
 
-### Tester l’appel C depuis Python
+### Tester le modèle linéaire
 
 ~~~bash
-uv run python/bindings/c_api.py
+uv run python tests/python/test_linear_interface.py
+uv run python tests/python/test_linear_data_conventions.py
+uv run python tests/python/test_linear_multiclass_predict.py
+uv run python tests/python/test_linear_multiclass_training.py
+uv run python tests/python/test_linear_model_cases.py
 ~~~
 
-### Résultat attendu
+### Lancer la baseline linéaire
+
+~~~bash
+uv run python python/experiments/run_linear_baseline_64x64.py --fold all --epochs 5 --learning-rate 0.001
+~~~
+
+### Lire les résultats
 
 ~~~plain text
-55
-93.0
-110.0
+reports/tables/linear_baseline_64x64_folds.csv
+reports/tables/linear_baseline_64x64_history.csv
+reports/figures/confusion_matrices/linear_baseline_64x64.png
+reports/figures/learning_curves/linear_baseline_64x64.png
 ~~~

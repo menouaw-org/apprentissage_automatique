@@ -1,0 +1,2 @@
+experiment,dataset,fold,train_accuracy,validation_accuracy,train_loss,validation_loss,notes
+Linéaire — baseline — 64x64,dataset_v1_64x64,0,0.3955188679245283,0.3935969868173258,0.6044811320754717,0.6064030131826742,"loss=1-accuracy car l’API actuelle expose la prédiction bipolaire, pas les scores bruts ni une fonction de perte."
