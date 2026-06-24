@@ -11,6 +11,8 @@ add_library(
         src/api/ml_library.h
         src/linear/linear_model.c
         src/linear/linear_model.h
+        src/mlp/mlp_model.c
+        src/mlp/mlp_model.h
 )
 
 target_include_directories(
