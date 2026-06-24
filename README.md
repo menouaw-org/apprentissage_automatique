@@ -2,22 +2,22 @@
 
 ## Présentation
 
-Ce projet a pour objectif de construire une bibliothèque d'apprentissage automatique en **C**, puis de l’exploiter depuis **Python** pour préparer les données, lancer les expérimentations, analyser les résultats et produire une démonstration.
+Ce projet a pour objectif de construire une bibliothèque d'apprentissage automatique en **C**, puis de l'exploiter depuis **Python** pour préparer les données, lancer les expérimentations, analyser les résultats et produire une démonstration.
 
 Le projet est organisé autour de trois objectifs principaux:
 
 1. implémenter progressivement plusieurs modèles de machine learning en C;
-2. utiliser Python comme couche d’orchestration, de validation, de notebooks et de visualisation;
+2. utiliser Python comme couche d'orchestration, de validation, de notebooks et de visualisation;
 3. conserver une trace reproductible des jeux de données, des expériences, des résultats et des décisions.
 
-Le premier périmètre technique validé concerne la mise en place de l’environnement:
+Le premier périmètre technique validé concerne la mise en place de l'environnement:
 - structure du dépôt;
 - environnement Python avec `uv`;
-- compilation d’une bibliothèque C dynamique avec CMake;
+- compilation d'une bibliothèque C dynamique avec CMake;
 - génération de `libpa_ml.dll` sous Windows;
 - appel de fonctions C depuis Python avec `ctypes`;
 - préparation du jeu de données image;
-- création d’un protocole expérimental de départ.
+- création d'un protocole expérimental de départ.
 
 ## Pile technique
 
@@ -35,7 +35,7 @@ Le premier périmètre technique validé concerne la mise en place de l’enviro
 - MinGW GCC: compilation C sous Windows.
 - Ninja: moteur de build utilisé par CLion / CMake.
 - GDB: débogage C.
-- uv: gestion de l’environnement Python et des dépendances.
+- uv: gestion de l'environnement Python et des dépendances.
 
 ### Configuration locale validée
 
@@ -52,7 +52,7 @@ La configuration locale utilisée pour le projet est la suivante:
 - type de projet CLion: `C Library`;
 - cible principale CMake: bibliothèque partagée.
 
-Le terminal externe peut ne pas reconnaître `cmake` si le CMake intégré à CLion n’est pas présent dans le `PATH`. Ce n’est pas bloquant: la compilation peut être faite depuis CLion.
+Le terminal externe peut ne pas reconnaître `cmake` si le CMake intégré à CLion n'est pas présent dans le `PATH`. Ce n'est pas bloquant: la compilation peut être faite depuis CLion.
 
 ## Arborescence du projet
 
@@ -118,14 +118,14 @@ pa-ml/
 | `src/svm/` | Futur SVM ou modèle alternatif. |
 | `python/bindings/` | Chargement de la bibliothèque C et déclaration des signatures `ctypes`. |
 | `python/data/` | Chargement, préparation et séparation des données. |
-| `python/experiments/` | Scripts d’expérimentation et de suivi. |
+| `python/experiments/` | Scripts d'expérimentation et de suivi. |
 | `python/app/` | Application de démonstration, par exemple avec Gradio. |
 | `notebooks/` | Exploration, expérimentation et analyse comparative. |
-| `data/raw/` | Images brutes conservées dans leur forme d’origine. |
+| `data/raw/` | Images brutes conservées dans leur forme d'origine. |
 | `data/processed/` | Images redimensionnées et préparées. |
 | `data/splits/` | Fichiers de séparation train / validation / test. |
 | `models/` | Modèles sauvegardés. |
-| `reports/` | Figures, tableaux, résultats et traces d’expériences. |
+| `reports/` | Figures, tableaux, résultats et traces d'expériences. |
 | `tests/` | Tests C et Python. |
 
 ## Installation
@@ -139,15 +139,15 @@ cd pa-ml
 
 ### 2. Installer uv
 
-Si `uv` n’est pas encore installé, suivre la documentation officielle de `uv` ou l’installer avec la méthode adaptée au poste.
+Si `uv` n'est pas encore installé, suivre la documentation officielle de `uv` ou l'installer avec la méthode adaptée au poste.
 
-Vérifier l’installation:
+Vérifier l'installation:
 
 ~~~bash
 uv --version
 ~~~
 
-### 3. Synchroniser l’environnement Python
+### 3. Synchroniser l'environnement Python
 
 Depuis la racine du projet:
 
@@ -155,13 +155,13 @@ Depuis la racine du projet:
 uv sync
 ~~~
 
-Si le projet vient d’être initialisé et que les dépendances doivent être ajoutées:
+Si le projet vient d'être initialisé et que les dépendances doivent être ajoutées:
 
 ~~~bash
 uv add numpy pandas pillow opencv-python plotly matplotlib seaborn tensorboard gradio tqdm
 ~~~
 
-### 4. Vérifier l’environnement Python
+### 4. Vérifier l'environnement Python
 
 ~~~bash
 uv run python --version
@@ -190,7 +190,7 @@ La méthode recommandée est de compiler depuis CLion.
 
 ### Profil Debug
 
-Le profil `Debug` sert au développement, au débogage et à la validation rapide de l’interopérabilité C / Python.
+Le profil `Debug` sert au développement, au débogage et à la validation rapide de l'interopérabilité C / Python.
 
 Procédure:
 
@@ -218,7 +218,7 @@ Procédure:
 cmake-build-release/libpa_ml.dll
 ~~~
 
-La configuration Release par défaut de CLion / CMake est suffisante à ce stade. Aucun flag personnalisé comme `-O3`, `-march=native` ou `-ffast-math` n’est ajouté pour l’instant.
+La configuration Release par défaut de CLion / CMake est suffisante à ce stade. Aucun flag personnalisé comme `-O3`, `-march=native` ou `-ffast-math` n'est ajouté pour l'instant.
 
 Les flags plus agressifs devront être envisagés seulement après:
 - mesure des performances;
@@ -252,7 +252,7 @@ Si le terminal affiche:
 bash: cmake: command not found
 ~~~
 
-cela signifie que le terminal ne trouve pas l’exécutable `cmake`.
+cela signifie que le terminal ne trouve pas l'exécutable `cmake`.
 
 Ce problème ne remet pas en cause la configuration CLion. CLion peut utiliser son CMake intégré sans que celui-ci soit disponible dans un terminal externe.
 
@@ -278,11 +278,11 @@ python/bindings/c_api.py
 ~~~
 
 Il charge `libpa_ml.dll` avec `ctypes`, déclare les signatures des fonctions C exposées et vérifie les appels suivants:
-- appel d’une fonction simple `my_add`;
-- création d’un pointeur opaque `LinearModel*`;
+- appel d'une fonction simple `my_add`;
+- création d'un pointeur opaque `LinearModel*`;
 - prédiction minimale via ce pointeur;
 - libération du pointeur;
-- transmission d’un tableau `numpy.float32` vers une fonction C.
+- transmission d'un tableau `numpy.float32` vers une fonction C.
 
 ### Lancer la validation
 
@@ -298,7 +298,7 @@ uv run python/bindings/c_api.py
 110.0
 ~~~
 
-Si ce résultat s’affiche, cela valide que:
+Si ce résultat s'affiche, cela valide que:
 - la DLL est trouvée;
 - les dépendances MinGW sont accessibles;
 - les symboles C sont exportés;
@@ -307,7 +307,7 @@ Si ce résultat s’affiche, cela valide que:
 
 ## Gestion du chemin de la DLL
 
-Le chargement de la DLL doit être calculé depuis l’emplacement réel du fichier `c_api.py`, afin d’éviter les chemins relatifs fragiles.
+Le chargement de la DLL doit être calculé depuis l'emplacement réel du fichier `c_api.py`, afin d'éviter les chemins relatifs fragiles.
 
 Version minimale actuelle:
 
@@ -337,7 +337,7 @@ Si la DLL Release doit être testée, adapter le chemin vers:
 cmake-build-release/libpa_ml.dll
 ~~~
 
-Une amélioration prévue consiste à ajouter un choix de build `Debug` / `Release` via une variable d’environnement, pour ne pas modifier le code à la main.
+Une amélioration prévue consiste à ajouter un choix de build `Debug` / `Release` via une variable d'environnement, pour ne pas modifier le code à la main.
 
 ## Jeu de données
 
@@ -365,7 +365,7 @@ Les classes finales sont:
 
 ### Volumes après filtrage
 
-| Classe | Nombre d’images |
+| Classe | Nombre d'images |
 |---|---:|
 | `dog` | 2114 |
 | `cat` | 1668 |
@@ -421,7 +421,7 @@ La résolution de départ pour les premières expériences est:
 
 ### Redimensionnement
 
-Le redimensionnement conserve le ratio de l’image et ajoute un padding noir si nécessaire. Cette règle évite de déformer les animaux.
+Le redimensionnement conserve le ratio de l'image et ajoute un padding noir si nécessaire. Cette règle évite de déformer les animaux.
 
 ## Protocole expérimental
 
@@ -447,9 +447,9 @@ data/splits/folds.csv
 - Les comparaisons pendant le développement doivent utiliser les folds de validation.
 - Toute modification des données, des splits ou du prétraitement doit être documentée.
 - Une expérience échouée doit être conservée et analysée.
-- Les résultats doivent être tracés dans le carnet d’expérimentations.
+- Les résultats doivent être tracés dans le carnet d'expérimentations.
 
-## Carnet d’expérimentations
+## Carnet d'expérimentations
 
 Chaque expérience doit documenter au minimum:
 
@@ -469,7 +469,7 @@ Fichiers associés:
 
 Les expériences doivent permettre de comprendre:
 - ce qui est testé;
-- pourquoi c’est testé;
+- pourquoi c'est testé;
 - avec quels réglages;
 - quels résultats sont observés;
 - quelle décision est prise ensuite.
@@ -560,11 +560,11 @@ os.add_dll_directory(r"C:\mingw64\bin")
 
 À ce stade:
 - la bibliothèque C minimale ne contient pas encore de vrai modèle de machine learning;
-- les fonctions exposées servent surtout à valider l’interopérabilité C / Python;
+- les fonctions exposées servent surtout à valider l'interopérabilité C / Python;
 - les modèles linéaire, MLP, RBF et SVM seront implémentés dans des tâches séparées;
 - les scripts de build terminal dépendent de la disponibilité de `cmake` et `ninja` dans le `PATH`;
 - la validation Python charge actuellement une DLL selon le chemin configuré dans `c_api.py`;
-- les flags d’optimisation avancés ne sont pas encore activés.
+- les flags d'optimisation avancés ne sont pas encore activés.
 
 ## Actions restantes
 
@@ -573,8 +573,8 @@ os.add_dll_directory(r"C:\mingw64\bin")
 - Compléter les tests C.
 - Compléter les tests Python.
 - Implémenter les modèles dans des tâches dédiées.
-- Alimenter le carnet d’expérimentations à chaque essai.
-- Préparer la démonstration finale avec l’application Python.
+- Alimenter le carnet d'expérimentations à chaque essai.
+- Préparer la démonstration finale avec l'application Python.
 
 ## Règle de contribution
 
@@ -599,7 +599,7 @@ uv sync
 2. sélectionner `Debug` ou `Release`;
 3. lancer `Build`.
 
-### Tester l’appel C depuis Python
+### Tester l'appel C depuis Python
 
 ~~~bash
 uv run python/bindings/c_api.py

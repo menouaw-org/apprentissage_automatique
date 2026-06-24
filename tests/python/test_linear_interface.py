@@ -30,7 +30,7 @@ def test_linear_interface_minimal() -> None:
     y_pred_array, y_pred_ptr = as_double_pointer(y_pred)
 
     model = lib.create_linear_model(1, 1, LINEAR_TASK_REGRESSION)
-    assert model, "Le modèle linéaire n’a pas été créé."
+    assert model, "Le modèle linéaire n'a pas été créé."
 
     try:
         train_status = lib.train_linear_model(
@@ -55,4 +55,4 @@ def test_linear_interface_minimal() -> None:
 
 if __name__ == "__main__":
     test_linear_interface_minimal()
-    print("Test d’interface linéaire réussi.")
+    print("Test d'interface linéaire réussi.")

@@ -102,7 +102,7 @@ def run() -> None:
             1000,
         )
         if train_status != 0:
-            raise RuntimeError(f"Erreur pendant l’entraînement: {train_status}")
+            raise RuntimeError(f"Erreur pendant l'entraînement: {train_status}")
 
         predict_status = lib.predict_linear_model(model, x_test_ptr, y_pred_ptr)
         if predict_status != 0:

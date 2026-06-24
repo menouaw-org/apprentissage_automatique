@@ -98,7 +98,7 @@ def run_classification_case(
         output_size,
         LINEAR_TASK_CLASSIFICATION,
     )
-    assert model, f"Le modèle n’a pas été créé pour le cas {case_name}."
+    assert model, f"Le modèle n'a pas été créé pour le cas {case_name}."
 
     try:
         train_status = lib.train_linear_model(
@@ -159,7 +159,7 @@ def run_regression_case(
         output_size,
         LINEAR_TASK_REGRESSION,
     )
-    assert model, f"Le modèle n’a pas été créé pour le cas {case_name}."
+    assert model, f"Le modèle n'a pas été créé pour le cas {case_name}."
 
     try:
         train_status = lib.train_linear_model(
@@ -367,7 +367,7 @@ def run_all_cases() -> list[CaseResult]:
             x=np.array([[1.0], [2.0], [3.0]], dtype=np.float64),
             y=np.array([2.0, 3.0, 2.5], dtype=np.float64),
             expected="OK",
-            comment="cas de régression traité comme diagnostic d’approximation",
+            comment="cas de régression traité comme diagnostic d'approximation",
             max_error_tolerance=0.6,
         )
     )

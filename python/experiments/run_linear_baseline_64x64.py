@@ -162,7 +162,7 @@ def labels_from_predictions(predictions: np.ndarray) -> list[str]:
 
 def compute_accuracy(expected_labels: list[str], predicted_labels: list[str]) -> float:
     if len(expected_labels) != len(predicted_labels):
-        raise ValueError("Les listes de labels n’ont pas la même taille.")
+        raise ValueError("Les listes de labels n'ont pas la même taille.")
 
     correct_count = sum(
         expected == predicted
@@ -208,7 +208,7 @@ def create_model(input_size: int) -> int:
     )
 
     if not model:
-        raise RuntimeError("Le modèle linéaire n’a pas été créé.")
+        raise RuntimeError("Le modèle linéaire n'a pas été créé.")
 
     return model
 
@@ -322,7 +322,7 @@ def run_fold(
         "train_loss": 1.0 - final_train_accuracy,
         "validation_loss": 1.0 - final_validation_accuracy,
         "notes": (
-            "loss=1-accuracy car l’API actuelle expose la prédiction bipolaire, "
+            "loss=1-accuracy car l'API actuelle expose la prédiction bipolaire, "
             "pas les scores bruts ni une fonction de perte."
         ),
     }
@@ -450,19 +450,19 @@ def parse_args() -> argparse.Namespace:
         "--learning-rate",
         type=float,
         default=0.001,
-        help="Taux d’apprentissage utilisé par train_linear_model.",
+        help="Taux d'apprentissage utilisé par train_linear_model.",
     )
     parser.add_argument(
         "--epochs",
         type=int,
         default=5,
-        help="Nombre d’époques par pli.",
+        help="Nombre d'époques par pli.",
     )
     parser.add_argument(
         "--eval-every",
         type=int,
         default=1,
-        help="Fréquence d’évaluation des métriques.",
+        help="Fréquence d'évaluation des métriques.",
     )
     parser.add_argument(
         "--fold",

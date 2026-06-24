@@ -60,7 +60,7 @@ def test_linear_multiclass_training() -> None:
     _, y_ptr = as_double_pointer(y)
 
     model = lib.create_linear_model(2, 3, LINEAR_TASK_CLASSIFICATION)
-    assert model, "Le modèle linéaire multi-classes n’a pas été créé."
+    assert model, "Le modèle linéaire multi-classes n'a pas été créé."
 
     try:
         train_status = lib.train_linear_model(
@@ -94,4 +94,4 @@ def test_linear_multiclass_training() -> None:
 
 if __name__ == "__main__":
     test_linear_multiclass_training()
-    print("Test d’apprentissage multi-classes réussi.")
+    print("Test d'apprentissage multi-classes réussi.")

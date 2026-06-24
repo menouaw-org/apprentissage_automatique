@@ -30,7 +30,7 @@ def test_multiclass_prediction_outputs_bipolar_vector() -> None:
         output_size,
         LINEAR_TASK_CLASSIFICATION,
     )
-    assert model, "Le modèle linéaire multi-sorties n’a pas été créé."
+    assert model, "Le modèle linéaire multi-sorties n'a pas été créé."
 
     try:
         predict_status = lib.predict_linear_model(model, x_test_ptr, y_pred_ptr)
