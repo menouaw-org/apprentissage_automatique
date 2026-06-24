@@ -34,6 +34,31 @@ DLLEXPORT int32_t predict_linear_model(
 
 DLLEXPORT void destroy_linear_model(void* model);
 
+DLLEXPORT void* create_mlp_model(
+    int32_t input_size,
+    int32_t output_size,
+    int32_t hidden_layer_count,
+    const int32_t* hidden_layer_sizes,
+    int32_t task_type
+);
+
+DLLEXPORT int32_t train_mlp_model(
+    void* model,
+    const double* x,
+    const double* y,
+    int32_t n_samples,
+    double learning_rate,
+    int32_t epochs
+);
+
+DLLEXPORT int32_t predict_mlp_model(
+    void* model,
+    const double* x,
+    double* y_pred
+);
+
+DLLEXPORT void destroy_mlp_model(void* model);
+
 DLLEXPORT float sum_array(const float* array, int32_t array_length);
 
 #endif

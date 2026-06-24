@@ -19,4 +19,5 @@ target_include_directories(
         pa_ml PUBLIC
         src/api
         src/linear
+        src/mlp
 )
