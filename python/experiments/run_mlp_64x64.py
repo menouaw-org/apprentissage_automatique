@@ -1,6 +1,7 @@
 import argparse
 import csv
 import ctypes
+import random
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -58,6 +59,8 @@ class RunConfig:
     epochs: int
     eval_every: int
     hidden_sizes: list[int]
+    balanced_train: bool
+    seed: int
 
 
 def ensure_output_directories() -> None:
@@ -170,6 +173,48 @@ def validate_split_shapes(split_data: SplitData) -> None:
             "Dimension d’entrée inattendue pour x_validation: "
             f"{split_data.x_validation.shape[1]} au lieu de {expected_input_size}."
         )
+
+
+def balance_training_data(split_data: SplitData, seed: int) -> SplitData:
+    train_class_indices = np.argmax(split_data.y_train, axis=1)
+    per_class_counts = [
+        int(np.sum(train_class_indices == class_index))
+        for class_index in range(len(CLASSES))
+    ]
+
+    if any(count == 0 for count in per_class_counts):
+        raise ValueError(
+            "Impossible d’équilibrer l’entraînement: au moins une classe est absente."
+        )
+
+    target_count = min(per_class_counts)
+    rng = random.Random(seed)
+    selected_indices: list[int] = []
+
+    for class_index in range(len(CLASSES)):
+        class_indices = np.where(train_class_indices == class_index)[0].tolist()
+        selected_indices.extend(rng.sample(class_indices, target_count))
+
+    rng.shuffle(selected_indices)
+    selected_array = np.asarray(selected_indices, dtype=np.int64)
+
+    print(
+        "Entraînement équilibré activé: "
+        + ", ".join(f"{class_name}={target_count}" for class_name in CLASSES)
+    )
+
+    return SplitData(
+        x_train=np.ascontiguousarray(
+            split_data.x_train[selected_array],
+            dtype=np.float64,
+        ),
+        y_train=np.ascontiguousarray(
+            split_data.y_train[selected_array],
+            dtype=np.float64,
+        ),
+        x_validation=split_data.x_validation,
+        y_validation=split_data.y_validation,
+    )
 
 
 def labels_from_targets(targets: np.ndarray) -> list[str]:
@@ -318,6 +363,11 @@ def run_fold(
 ) -> tuple[dict[str, object], list[dict[str, object]], np.ndarray]:
     print(f"\n=== Fold {fold} ===")
     split_data = load_split(rows, validation_fold=fold)
+    if config.balanced_train:
+        split_data = balance_training_data(
+            split_data=split_data,
+            seed=config.seed + fold,
+        )
 
     input_size = int(split_data.x_train.shape[1])
     model = create_model(input_size, config.hidden_sizes)
@@ -358,6 +408,9 @@ def run_fold(
                         "epoch": epoch,
                         "hidden_sizes": hidden_label,
                         "learning_rate": config.learning_rate,
+                        "balanced_train": config.balanced_train,
+                        "train_samples": int(split_data.x_train.shape[0]),
+                        "validation_samples": int(split_data.x_validation.shape[0]),
                         "train_accuracy": train_accuracy,
                         "validation_accuracy": validation_accuracy,
                         "train_loss": 1.0 - train_accuracy,
@@ -399,6 +452,9 @@ def run_fold(
         "hidden_sizes": hidden_label,
         "learning_rate": config.learning_rate,
         "epochs": config.epochs,
+        "balanced_train": config.balanced_train,
+        "train_samples": int(split_data.x_train.shape[0]),
+        "validation_samples": int(split_data.x_validation.shape[0]),
         "train_accuracy": final_train_accuracy,
         "validation_accuracy": final_validation_accuracy,
         "train_loss": 1.0 - final_train_accuracy,
@@ -407,9 +463,13 @@ def run_fold(
         "cat_recall": recalls["cat_recall"],
         "others_recall": recalls["others_recall"],
         "notes": (
-            "loss=1-accuracy car l’API MLP actuelle expose une prédiction "
-            "bipolaire, pas une fonction de perte continue."
-        ),
+                     "train équilibré par sous-échantillonnage; "
+                     if config.balanced_train
+                     else ""
+                 ) + (
+                     "loss=1-accuracy car l’API MLP actuelle expose une prédiction "
+                     "bipolaire, pas une fonction de perte continue."
+                 ),
     }
 
     return fold_row, history_rows, confusion_matrix
@@ -424,6 +484,9 @@ def write_folds_report(rows: list[dict[str, object]]) -> None:
             "hidden_sizes",
             "learning_rate",
             "epochs",
+            "balanced_train",
+            "train_samples",
+            "validation_samples",
             "train_accuracy",
             "validation_accuracy",
             "train_loss",
@@ -450,6 +513,9 @@ def write_history_report(rows: list[dict[str, object]]) -> None:
             "epoch",
             "hidden_sizes",
             "learning_rate",
+            "balanced_train",
+            "train_samples",
+            "validation_samples",
             "train_accuracy",
             "validation_accuracy",
             "train_loss",
@@ -590,6 +656,20 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Tailles des couches cachées, par exemple 128 ou 128,64.",
     )
+    parser.add_argument(
+        "--balanced-train",
+        action="store_true",
+        help=(
+            "Sous-échantillonne le train de chaque pli pour avoir autant "
+            "d’exemples dog, cat et others."
+        ),
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Graine utilisée pour le sous-échantillonnage équilibré.",
+    )
 
     return parser.parse_args()
 
@@ -630,6 +710,8 @@ def main() -> None:
         epochs=args.epochs,
         eval_every=args.eval_every,
         hidden_sizes=parse_hidden_sizes(args.hidden_sizes),
+        balanced_train=args.balanced_train,
+        seed=args.seed,
     )
     validate_run_config(config)
 

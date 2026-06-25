@@ -88,6 +88,14 @@ DLLEXPORT int32_t predict_mlp_model(
     return mlp_model_predict((MlpModel*) model, x, y_pred);
 }
 
+DLLEXPORT int32_t predict_mlp_model_raw(
+    void* model,
+    const double* x,
+    double* y_raw
+) {
+    return mlp_model_predict_raw((MlpModel*) model, x, y_raw);
+}
+
 DLLEXPORT void destroy_mlp_model(void* model) {
     mlp_model_destroy((MlpModel*) model);
 }

@@ -57,6 +57,12 @@ DLLEXPORT int32_t predict_mlp_model(
     double* y_pred
 );
 
+DLLEXPORT int32_t predict_mlp_model_raw(
+    void* model,
+    const double* x,
+    double* y_raw
+);
+
 DLLEXPORT void destroy_mlp_model(void* model);
 
 DLLEXPORT float sum_array(const float* array, int32_t array_length);

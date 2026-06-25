@@ -52,6 +52,12 @@ int32_t mlp_model_predict(
     double* y_pred
 );
 
+int32_t mlp_model_predict_raw(
+    MlpModel* model,
+    const double* x,
+    double* y_raw
+);
+
 void mlp_model_destroy(MlpModel* model);
 
 #endif

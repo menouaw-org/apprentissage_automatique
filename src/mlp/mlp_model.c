@@ -457,6 +457,33 @@ int32_t mlp_model_predict(
     return MLP_MODEL_SUCCESS;
 }
 
+int32_t mlp_model_predict_raw(
+    MlpModel* model,
+    const double* x,
+    double* y_raw
+) {
+    if (model == NULL || x == NULL || y_raw == NULL) {
+        return MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (model->task_type != MLP_TASK_CLASSIFICATION) {
+        return MLP_MODEL_ERROR_UNSUPPORTED_TASK;
+    }
+
+    int32_t forward_status = mlp_model_forward(model, x);
+    if (forward_status != MLP_MODEL_SUCCESS) {
+        return forward_status;
+    }
+
+    int32_t output_layer = model->layer_count - 1;
+
+    for (int32_t output = 0; output < model->output_size; output++) {
+        y_raw[output] = model->activations[output_layer][output];
+    }
+
+    return MLP_MODEL_SUCCESS;
+}
+
 void mlp_model_destroy(MlpModel* model) {
     if (model == NULL) {
         return;

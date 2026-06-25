@@ -85,6 +85,13 @@ def configure_api(lib: ctypes.CDLL) -> ctypes.CDLL:
     ]
     lib.predict_mlp_model.restype = ctypes.c_int32
 
+    lib.predict_mlp_model_raw.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+    ]
+    lib.predict_mlp_model_raw.restype = ctypes.c_int32
+
     lib.destroy_mlp_model.argtypes = [ctypes.c_void_p]
     lib.destroy_mlp_model.restype = None
 
