@@ -273,16 +273,16 @@ def compute_recalls(confusion_matrix: np.ndarray) -> dict[str, float]:
 
 
 def predict_one(model: int, x_sample: np.ndarray) -> np.ndarray:
-    y_pred = np.zeros(len(CLASSES), dtype=np.float64)
+    y_scores = np.zeros(len(CLASSES), dtype=np.float64)
 
     _, x_ptr = as_double_pointer(x_sample)
-    y_pred_array, y_pred_ptr = as_double_pointer(y_pred)
+    y_scores_array, y_scores_ptr = as_double_pointer(y_scores)
 
-    predict_status = lib.predict_mlp_model(model, x_ptr, y_pred_ptr)
+    predict_status = lib.predict_mlp_model_raw(model, x_ptr, y_scores_ptr)
     if predict_status != 0:
-        raise RuntimeError(f"predict_mlp_model a renvoyé {predict_status}")
+        raise RuntimeError(f"predict_mlp_model_raw a renvoyé {predict_status}")
 
-    return y_pred_array.copy()
+    return y_scores_array.copy()
 
 
 def predict_many(model: int, x: np.ndarray) -> np.ndarray:
