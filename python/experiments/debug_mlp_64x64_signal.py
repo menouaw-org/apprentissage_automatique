@@ -257,9 +257,9 @@ def summarize_predictions(
         epoch: int,
         split_name: str,
         dataset: Dataset,
-        predictions: np.ndarray,
+        raw_outputs: np.ndarray,
 ) -> dict[str, object]:
-    predicted_labels = labels_from_predictions(predictions)
+    predicted_labels = labels_from_predictions(raw_outputs)
     accuracy = compute_accuracy(dataset.labels, predicted_labels)
     recalls = compute_recalls(dataset.labels, predicted_labels)
     prediction_counts = Counter(predicted_labels)
@@ -285,8 +285,8 @@ def summarize_predictions(
                 summary[f"mean_{output_class}_score_on_{real_class}"] = ""
             continue
 
-        class_predictions = predictions[class_indices]
-        mean_scores = class_predictions.mean(axis=0)
+        class_raw_outputs = raw_outputs[class_indices]
+        mean_scores = class_raw_outputs.mean(axis=0)
         for output_index, output_class in enumerate(CLASSES):
             summary[f"mean_{output_class}_score_on_{real_class}"] = float(
                 mean_scores[output_index]
@@ -302,7 +302,7 @@ def build_probe_rows(
         raw_outputs: np.ndarray,
         binary_predictions: np.ndarray,
 ) -> list[dict[str, object]]:
-    predicted_labels = labels_from_predictions(binary_predictions)
+    predicted_labels = labels_from_predictions(raw_outputs)
     rows: list[dict[str, object]] = []
 
     for index, (
@@ -451,7 +451,7 @@ def main() -> None:
                         epoch=epoch,
                         split_name=split_name,
                         dataset=dataset,
-                        predictions=binary_predictions,
+                        raw_outputs=raw_outputs,
                     )
                 )
                 signal_rows.extend(
