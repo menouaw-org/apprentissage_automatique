@@ -58,6 +58,10 @@ int32_t mlp_model_predict_raw(
     double* y_raw
 );
 
+int32_t mlp_model_save(const MlpModel* model, const char* path);
+
+MlpModel* mlp_model_load(const char* path);
+
 void mlp_model_destroy(MlpModel* model);
 
 #endif
