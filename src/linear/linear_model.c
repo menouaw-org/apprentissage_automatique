@@ -1,6 +1,14 @@
 #include "linear_model.h"
 
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#define LINEAR_MODEL_FILE_VERSION 1
+
+static const char LINEAR_MODEL_FILE_MAGIC[8] = {
+    'P', 'A', 'L', 'I', 'N', '0', '1', '\0'
+};
 
 struct LinearModel {
     int32_t input_size;
@@ -344,6 +352,152 @@ int32_t linear_model_train(
     }
 
     return LINEAR_MODEL_ERROR_UNSUPPORTED_TASK;
+}
+
+int32_t linear_model_save(const LinearModel* model, const char* path) {
+    if (model == NULL || path == NULL) {
+        return LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    int32_t weight_count = linear_model_weight_count(model);
+    if (weight_count <= 0 || model->weights == NULL) {
+        return LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    FILE* file = fopen(path, "wb");
+    if (file == NULL) {
+        return LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    int32_t version = LINEAR_MODEL_FILE_VERSION;
+    int32_t status = LINEAR_MODEL_SUCCESS;
+
+    if (fwrite(LINEAR_MODEL_FILE_MAGIC, sizeof(char), 8, file) != 8) {
+        status = LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (fwrite(&version, sizeof(int32_t), 1, file) != 1) {
+        status = LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (fwrite(&model->input_size, sizeof(int32_t), 1, file) != 1) {
+        status = LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (fwrite(&model->output_size, sizeof(int32_t), 1, file) != 1) {
+        status = LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (fwrite(&model->task_type, sizeof(int32_t), 1, file) != 1) {
+        status = LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (fwrite(&weight_count, sizeof(int32_t), 1, file) != 1) {
+        status = LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (
+        fwrite(
+            model->weights,
+            sizeof(double),
+            (size_t) weight_count,
+            file
+        ) != (size_t) weight_count
+    ) {
+        status = LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (fclose(file) != 0 && status == LINEAR_MODEL_SUCCESS) {
+        status = LINEAR_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    return status;
+}
+
+LinearModel* linear_model_load(const char* path) {
+    if (path == NULL) {
+        return NULL;
+    }
+
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) {
+        return NULL;
+    }
+
+    char magic[8];
+    int32_t version = 0;
+    int32_t input_size = 0;
+    int32_t output_size = 0;
+    int32_t task_type = 0;
+    int32_t stored_weight_count = 0;
+
+    if (fread(magic, sizeof(char), 8, file) != 8) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (memcmp(magic, LINEAR_MODEL_FILE_MAGIC, 8) != 0) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(&version, sizeof(int32_t), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (version != LINEAR_MODEL_FILE_VERSION) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(&input_size, sizeof(int32_t), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(&output_size, sizeof(int32_t), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(&task_type, sizeof(int32_t), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(&stored_weight_count, sizeof(int32_t), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    int32_t expected_weight_count = linear_model_weight_count_from_dimensions(
+        input_size,
+        output_size
+    );
+
+    if (
+        expected_weight_count <= 0 ||
+        stored_weight_count != expected_weight_count ||
+        !linear_model_is_supported_task(task_type)
+    ) {
+        fclose(file);
+        return NULL;
+    }
+
+    LinearModel* model = linear_model_create(
+        input_size,
+        output_size,
+        task_type
+    );
+    if (model == NULL) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (
+        fread(
+            model->weights,
+            sizeof(double),
+            (size_t) expected_weight_count,
+            file
+        ) != (size_t) expected_weight_count
+    ) {
+        linear_model_destroy(model);
+        fclose(file);
+        return NULL;
+    }
+
+    fclose(file);
+    return model;
 }
 
 void linear_model_destroy(LinearModel* model) {

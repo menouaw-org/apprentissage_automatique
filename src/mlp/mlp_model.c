@@ -1,7 +1,15 @@
 #include "mlp_model.h"
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#define MLP_MODEL_FILE_VERSION 1
+
+static const char MLP_MODEL_FILE_MAGIC[8] = {
+    'P', 'A', 'M', 'L', 'P', '0', '1', '\0'
+};
 
 struct MlpModel {
     int32_t input_size;
@@ -298,6 +306,76 @@ static void mlp_model_update_parameters(
     }
 }
 
+static int32_t mlp_model_write_layer_parameters(
+    const MlpModel* model,
+    FILE* file
+) {
+    for (int32_t layer = 0; layer < model->layer_count; layer++) {
+        int32_t previous_size = mlp_model_previous_layer_size(model, layer);
+        int32_t current_size = model->layer_sizes[layer];
+        int32_t weight_count = previous_size * current_size;
+
+        if (
+            fwrite(
+                model->weights[layer],
+                sizeof(double),
+                (size_t) weight_count,
+                file
+            ) != (size_t) weight_count
+        ) {
+            return MLP_MODEL_ERROR_INVALID_ARGUMENT;
+        }
+
+        if (
+            fwrite(
+                model->biases[layer],
+                sizeof(double),
+                (size_t) current_size,
+                file
+            ) != (size_t) current_size
+        ) {
+            return MLP_MODEL_ERROR_INVALID_ARGUMENT;
+        }
+    }
+
+    return MLP_MODEL_SUCCESS;
+}
+
+static int32_t mlp_model_read_layer_parameters(
+    MlpModel* model,
+    FILE* file
+) {
+    for (int32_t layer = 0; layer < model->layer_count; layer++) {
+        int32_t previous_size = mlp_model_previous_layer_size(model, layer);
+        int32_t current_size = model->layer_sizes[layer];
+        int32_t weight_count = previous_size * current_size;
+
+        if (
+            fread(
+                model->weights[layer],
+                sizeof(double),
+                (size_t) weight_count,
+                file
+            ) != (size_t) weight_count
+        ) {
+            return MLP_MODEL_ERROR_INVALID_ARGUMENT;
+        }
+
+        if (
+            fread(
+                model->biases[layer],
+                sizeof(double),
+                (size_t) current_size,
+                file
+            ) != (size_t) current_size
+        ) {
+            return MLP_MODEL_ERROR_INVALID_ARGUMENT;
+        }
+    }
+
+    return MLP_MODEL_SUCCESS;
+}
+
 MlpModel* mlp_model_create(
     int32_t input_size,
     int32_t output_size,
@@ -482,6 +560,174 @@ int32_t mlp_model_predict_raw(
     }
 
     return MLP_MODEL_SUCCESS;
+}
+
+int32_t mlp_model_save(const MlpModel* model, const char* path) {
+    if (model == NULL || path == NULL) {
+        return MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    FILE* file = fopen(path, "wb");
+    if (file == NULL) {
+        return MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    int32_t version = MLP_MODEL_FILE_VERSION;
+    int32_t status = MLP_MODEL_SUCCESS;
+
+    if (fwrite(MLP_MODEL_FILE_MAGIC, sizeof(char), 8, file) != 8) {
+        status = MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (fwrite(&version, sizeof(int32_t), 1, file) != 1) {
+        status = MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (fwrite(&model->input_size, sizeof(int32_t), 1, file) != 1) {
+        status = MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (fwrite(&model->output_size, sizeof(int32_t), 1, file) != 1) {
+        status = MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (
+        fwrite(&model->hidden_layer_count, sizeof(int32_t), 1, file) != 1
+    ) {
+        status = MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (fwrite(&model->task_type, sizeof(int32_t), 1, file) != 1) {
+        status = MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    } else if (
+        model->hidden_layer_count > 0 &&
+        fwrite(
+            model->layer_sizes,
+            sizeof(int32_t),
+            (size_t) model->hidden_layer_count,
+            file
+        ) != (size_t) model->hidden_layer_count
+    ) {
+        status = MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    } else {
+        status = mlp_model_write_layer_parameters(model, file);
+    }
+
+    if (fclose(file) != 0 && status == MLP_MODEL_SUCCESS) {
+        status = MLP_MODEL_ERROR_INVALID_ARGUMENT;
+    }
+
+    return status;
+}
+
+MlpModel* mlp_model_load(const char* path) {
+    if (path == NULL) {
+        return NULL;
+    }
+
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) {
+        return NULL;
+    }
+
+    char magic[8];
+    int32_t version = 0;
+    int32_t input_size = 0;
+    int32_t output_size = 0;
+    int32_t hidden_layer_count = 0;
+    int32_t task_type = 0;
+    int32_t* hidden_layer_sizes = NULL;
+
+    if (fread(magic, sizeof(char), 8, file) != 8) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (memcmp(magic, MLP_MODEL_FILE_MAGIC, 8) != 0) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(&version, sizeof(int32_t), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (version != MLP_MODEL_FILE_VERSION) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(&input_size, sizeof(int32_t), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(&output_size, sizeof(int32_t), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(&hidden_layer_count, sizeof(int32_t), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(&task_type, sizeof(int32_t), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (hidden_layer_count > 0) {
+        hidden_layer_sizes = malloc(
+            (size_t) hidden_layer_count * sizeof(int32_t)
+        );
+        if (hidden_layer_sizes == NULL) {
+            fclose(file);
+            return NULL;
+        }
+
+        if (
+            fread(
+                hidden_layer_sizes,
+                sizeof(int32_t),
+                (size_t) hidden_layer_count,
+                file
+            ) != (size_t) hidden_layer_count
+        ) {
+            free(hidden_layer_sizes);
+            fclose(file);
+            return NULL;
+        }
+    }
+
+    if (
+        mlp_model_validate_dimensions(
+            input_size,
+            output_size,
+            hidden_layer_count,
+            hidden_layer_sizes,
+            task_type
+        ) != MLP_MODEL_SUCCESS
+    ) {
+        free(hidden_layer_sizes);
+        fclose(file);
+        return NULL;
+    }
+
+    MlpModel* model = mlp_model_create(
+        input_size,
+        output_size,
+        hidden_layer_count,
+        hidden_layer_sizes,
+        task_type
+    );
+
+    free(hidden_layer_sizes);
+
+    if (model == NULL) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (mlp_model_read_layer_parameters(model, file) != MLP_MODEL_SUCCESS) {
+        mlp_model_destroy(model);
+        fclose(file);
+        return NULL;
+    }
+
+    fclose(file);
+    return model;
 }
 
 void mlp_model_destroy(MlpModel* model) {

@@ -32,6 +32,10 @@ DLLEXPORT int32_t predict_linear_model(
     double* y_pred
 );
 
+DLLEXPORT int32_t save_linear_model(void* model, const char* path);
+
+DLLEXPORT void* load_linear_model(const char* path);
+
 DLLEXPORT void destroy_linear_model(void* model);
 
 DLLEXPORT void* create_mlp_model(
@@ -62,6 +66,10 @@ DLLEXPORT int32_t predict_mlp_model_raw(
     const double* x,
     double* y_raw
 );
+
+DLLEXPORT int32_t save_mlp_model(void* model, const char* path);
+
+DLLEXPORT void* load_mlp_model(const char* path);
 
 DLLEXPORT void destroy_mlp_model(void* model);
 
