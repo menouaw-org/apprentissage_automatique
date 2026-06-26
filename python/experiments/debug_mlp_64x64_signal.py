@@ -1,5 +1,4 @@
 import argparse
-import csv
 import ctypes
 import random
 import sys
@@ -8,12 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
 from tqdm import tqdm
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 from python.bindings.c_api import (  # noqa: E402
     MLP_TASK_CLASSIFICATION,
@@ -21,16 +19,17 @@ from python.bindings.c_api import (  # noqa: E402
     as_int32_pointer,
     lib,
 )
+from python.common.dataset_64x64 import (  # noqa: E402
+    CLASSES,
+    PROJECT_ROOT,
+    compute_accuracy,
+    encode_label,
+    labels_from_predictions,
+    load_image_as_vector,
+    read_folds_csv,
+)
+from python.common.reports import write_csv  # noqa: E402
 
-CLASSES = ["dog", "cat", "others"]
-
-LABEL_TO_TARGET = {
-    "dog": np.array([1.0, -1.0, -1.0], dtype=np.float64),
-    "cat": np.array([-1.0, 1.0, -1.0], dtype=np.float64),
-    "others": np.array([-1.0, -1.0, 1.0], dtype=np.float64),
-}
-
-FOLDS_CSV = PROJECT_ROOT / "data" / "splits" / "folds.csv"
 TABLES_DIR = PROJECT_ROOT / "reports" / "tables"
 SIGNAL_PROBE_CSV = TABLES_DIR / "mlp_64x64_signal_probe.csv"
 MINI_HISTORY_CSV = TABLES_DIR / "mlp_64x64_mini_balanced_history.csv"
@@ -55,25 +54,6 @@ class RunConfig:
     seed: int
 
 
-def read_folds_csv() -> list[dict[str, str]]:
-    if not FOLDS_CSV.exists():
-        raise FileNotFoundError(f"Fichier introuvable: {FOLDS_CSV}")
-
-    with FOLDS_CSV.open("r", newline="", encoding="utf-8") as csv_file:
-        reader = csv.DictReader(csv_file)
-        rows = list(reader)
-        fieldnames = set(reader.fieldnames or [])
-
-    expected_columns = {"path", "label", "fold"}
-    missing_columns = expected_columns - fieldnames
-    if missing_columns:
-        raise ValueError(
-            f"Colonnes manquantes dans {FOLDS_CSV}: {sorted(missing_columns)}"
-        )
-
-    return rows
-
-
 def sample_balanced_rows(
         rows: list[dict[str, str]],
         per_class: int,
@@ -96,25 +76,6 @@ def sample_balanced_rows(
     return selected_rows
 
 
-def load_image_as_vector(relative_path: str) -> np.ndarray:
-    image_path = PROJECT_ROOT / relative_path
-    if not image_path.exists():
-        raise FileNotFoundError(f"Image introuvable: {image_path}")
-
-    with Image.open(image_path) as image:
-        image = image.convert("RGB")
-        array = np.asarray(image, dtype=np.float64)
-
-    return np.ascontiguousarray(array.reshape(-1) / 255.0, dtype=np.float64)
-
-
-def encode_label(label: str) -> np.ndarray:
-    if label not in LABEL_TO_TARGET:
-        raise ValueError(f"Label inconnu: {label}")
-
-    return LABEL_TO_TARGET[label].copy()
-
-
 def load_dataset(rows: list[dict[str, str]], description: str) -> Dataset:
     vectors: list[np.ndarray] = []
     targets: list[np.ndarray] = []
@@ -130,7 +91,7 @@ def load_dataset(rows: list[dict[str, str]], description: str) -> Dataset:
     x = np.ascontiguousarray(vectors, dtype=np.float64)
     y = np.ascontiguousarray(targets, dtype=np.float64)
 
-    if x.ndim != 2 or x.shape[1] != 64 * 64 * 3:
+    if x.ndim != 2:
         raise ValueError(f"Dimension d’entrée inattendue: {x.shape}")
 
     if y.ndim != 2 or y.shape[1] != len(CLASSES):
@@ -211,25 +172,6 @@ def predict_one_raw(model: int, x_sample: np.ndarray) -> np.ndarray:
 def predict_many_raw(model: int, x: np.ndarray) -> np.ndarray:
     predictions = [predict_one_raw(model, sample) for sample in x]
     return np.ascontiguousarray(predictions, dtype=np.float64)
-
-
-def labels_from_predictions(predictions: np.ndarray) -> list[str]:
-    indices = np.argmax(predictions, axis=1)
-    return [CLASSES[index] for index in indices]
-
-
-def compute_accuracy(expected_labels: list[str], predicted_labels: list[str]) -> float:
-    if len(expected_labels) != len(predicted_labels):
-        raise ValueError("Les listes de labels n’ont pas la même taille.")
-
-    if not expected_labels:
-        raise ValueError("Impossible de calculer une accuracy sans exemple.")
-
-    correct_count = sum(
-        expected == predicted
-        for expected, predicted in zip(expected_labels, predicted_labels)
-    )
-    return correct_count / len(expected_labels)
 
 
 def compute_recalls(
@@ -338,18 +280,6 @@ def build_probe_rows(
         )
 
     return rows
-
-
-def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
-    if not rows:
-        raise ValueError(f"Aucune ligne à écrire dans {path}")
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    with path.open("w", newline="", encoding="utf-8") as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=list(rows[0].keys()))
-        writer.writeheader()
-        writer.writerows(rows)
 
 
 def parse_hidden_sizes(raw_value: str) -> list[int]:

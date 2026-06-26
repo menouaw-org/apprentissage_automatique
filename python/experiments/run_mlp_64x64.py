@@ -1,39 +1,43 @@
 import argparse
-import csv
 import ctypes
-import random
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image
 from tqdm import tqdm
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
-from python.bindings.c_api import (
+from python.bindings.c_api import (  # noqa: E402
     MLP_TASK_CLASSIFICATION,
     as_double_pointer,
     as_int32_pointer,
     lib,
 )
-
-CLASSES = ["dog", "cat", "others"]
-
-LABEL_TO_TARGET = {
-    "dog": np.array([1.0, -1.0, -1.0], dtype=np.float64),
-    "cat": np.array([-1.0, 1.0, -1.0], dtype=np.float64),
-    "others": np.array([-1.0, -1.0, 1.0], dtype=np.float64),
-}
+from python.common.dataset_64x64 import (  # noqa: E402
+    CLASSES,
+    PROJECT_ROOT,
+    balance_training_data,
+    compute_accuracy,
+    compute_confusion_matrix,
+    compute_recalls,
+    labels_from_predictions,
+    labels_from_targets,
+    load_split,
+    read_folds_csv,
+)
+from python.common.reports import (  # noqa: E402
+    ensure_directories,
+    plot_confusion_matrix,
+    plot_learning_curves,
+    write_csv,
+)
 
 EXPERIMENT_NAME = "MLP — 1 couche cachée — 64x64"
 DATASET_NAME = "dataset_v1_64x64"
-
-FOLDS_CSV = PROJECT_ROOT / "data" / "splits" / "folds.csv"
 
 TABLES_DIR = PROJECT_ROOT / "reports" / "tables"
 CONFUSION_DIR = PROJECT_ROOT / "reports" / "figures" / "confusion_matrices"
@@ -44,13 +48,41 @@ HISTORY_REPORT = TABLES_DIR / "mlp_64x64_history.csv"
 CONFUSION_FIGURE = CONFUSION_DIR / "mlp_64x64.png"
 CURVES_FIGURE = CURVES_DIR / "mlp_64x64.png"
 
+FOLDS_FIELDNAMES = [
+    "experiment",
+    "dataset",
+    "fold",
+    "hidden_sizes",
+    "learning_rate",
+    "epochs",
+    "balanced_train",
+    "train_samples",
+    "validation_samples",
+    "train_accuracy",
+    "validation_accuracy",
+    "train_loss",
+    "validation_loss",
+    "dog_recall",
+    "cat_recall",
+    "others_recall",
+    "notes",
+]
 
-@dataclass
-class SplitData:
-    x_train: np.ndarray
-    y_train: np.ndarray
-    x_validation: np.ndarray
-    y_validation: np.ndarray
+HISTORY_FIELDNAMES = [
+    "experiment",
+    "dataset",
+    "fold",
+    "epoch",
+    "hidden_sizes",
+    "learning_rate",
+    "balanced_train",
+    "train_samples",
+    "validation_samples",
+    "train_accuracy",
+    "validation_accuracy",
+    "train_loss",
+    "validation_loss",
+]
 
 
 @dataclass
@@ -61,215 +93,6 @@ class RunConfig:
     hidden_sizes: list[int]
     balanced_train: bool
     seed: int
-
-
-def ensure_output_directories() -> None:
-    TABLES_DIR.mkdir(parents=True, exist_ok=True)
-    CONFUSION_DIR.mkdir(parents=True, exist_ok=True)
-    CURVES_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def read_folds_csv() -> list[dict[str, str]]:
-    if not FOLDS_CSV.exists():
-        raise FileNotFoundError(f"Fichier introuvable: {FOLDS_CSV}")
-
-    with FOLDS_CSV.open("r", newline="", encoding="utf-8") as csv_file:
-        reader = csv.DictReader(csv_file)
-        rows = list(reader)
-        fieldnames = set(reader.fieldnames or [])
-
-    expected_columns = {"path", "label", "fold"}
-    missing_columns = expected_columns - fieldnames
-    if missing_columns:
-        raise ValueError(
-            f"Colonnes manquantes dans {FOLDS_CSV}: {sorted(missing_columns)}"
-        )
-
-    return rows
-
-
-def load_image_as_vector(relative_path: str) -> np.ndarray:
-    image_path = PROJECT_ROOT / relative_path
-
-    if not image_path.exists():
-        raise FileNotFoundError(f"Image introuvable: {image_path}")
-
-    with Image.open(image_path) as image:
-        image = image.convert("RGB")
-        array = np.asarray(image, dtype=np.float64)
-
-    return (array.reshape(-1) / 255.0).astype(np.float64)
-
-
-def encode_label(label: str) -> np.ndarray:
-    if label not in LABEL_TO_TARGET:
-        raise ValueError(f"Label inconnu: {label}")
-
-    return LABEL_TO_TARGET[label].copy()
-
-
-def load_split(rows: list[dict[str, str]], validation_fold: int) -> SplitData:
-    train_vectors = []
-    train_targets = []
-    validation_vectors = []
-    validation_targets = []
-
-    for row in tqdm(
-            rows,
-            desc=f"Chargement des images — fold {validation_fold}",
-            unit="image",
-    ):
-        row_fold = int(row["fold"])
-        label = row["label"]
-
-        image_vector = load_image_as_vector(row["path"])
-        target = encode_label(label)
-
-        if row_fold == validation_fold:
-            validation_vectors.append(image_vector)
-            validation_targets.append(target)
-        else:
-            train_vectors.append(image_vector)
-            train_targets.append(target)
-
-    split_data = SplitData(
-        x_train=np.ascontiguousarray(train_vectors, dtype=np.float64),
-        y_train=np.ascontiguousarray(train_targets, dtype=np.float64),
-        x_validation=np.ascontiguousarray(validation_vectors, dtype=np.float64),
-        y_validation=np.ascontiguousarray(validation_targets, dtype=np.float64),
-    )
-
-    validate_split_shapes(split_data)
-
-    return split_data
-
-
-def validate_split_shapes(split_data: SplitData) -> None:
-    expected_input_size = 64 * 64 * 3
-
-    if split_data.x_train.ndim != 2:
-        raise ValueError("x_train doit être une matrice 2D.")
-
-    if split_data.x_validation.ndim != 2:
-        raise ValueError("x_validation doit être une matrice 2D.")
-
-    if split_data.y_train.ndim != 2 or split_data.y_train.shape[1] != len(CLASSES):
-        raise ValueError("y_train doit avoir trois sorties.")
-
-    if (
-            split_data.y_validation.ndim != 2
-            or split_data.y_validation.shape[1] != len(CLASSES)
-    ):
-        raise ValueError("y_validation doit avoir trois sorties.")
-
-    if split_data.x_train.shape[1] != expected_input_size:
-        raise ValueError(
-            "Dimension d’entrée inattendue pour x_train: "
-            f"{split_data.x_train.shape[1]} au lieu de {expected_input_size}."
-        )
-
-    if split_data.x_validation.shape[1] != expected_input_size:
-        raise ValueError(
-            "Dimension d’entrée inattendue pour x_validation: "
-            f"{split_data.x_validation.shape[1]} au lieu de {expected_input_size}."
-        )
-
-
-def balance_training_data(split_data: SplitData, seed: int) -> SplitData:
-    train_class_indices = np.argmax(split_data.y_train, axis=1)
-    per_class_counts = [
-        int(np.sum(train_class_indices == class_index))
-        for class_index in range(len(CLASSES))
-    ]
-
-    if any(count == 0 for count in per_class_counts):
-        raise ValueError(
-            "Impossible d’équilibrer l’entraînement: au moins une classe est absente."
-        )
-
-    target_count = min(per_class_counts)
-    rng = random.Random(seed)
-    selected_indices: list[int] = []
-
-    for class_index in range(len(CLASSES)):
-        class_indices = np.where(train_class_indices == class_index)[0].tolist()
-        selected_indices.extend(rng.sample(class_indices, target_count))
-
-    rng.shuffle(selected_indices)
-    selected_array = np.asarray(selected_indices, dtype=np.int64)
-
-    print(
-        "Entraînement équilibré activé: "
-        + ", ".join(f"{class_name}={target_count}" for class_name in CLASSES)
-    )
-
-    return SplitData(
-        x_train=np.ascontiguousarray(
-            split_data.x_train[selected_array],
-            dtype=np.float64,
-        ),
-        y_train=np.ascontiguousarray(
-            split_data.y_train[selected_array],
-            dtype=np.float64,
-        ),
-        x_validation=split_data.x_validation,
-        y_validation=split_data.y_validation,
-    )
-
-
-def labels_from_targets(targets: np.ndarray) -> list[str]:
-    indices = np.argmax(targets, axis=1)
-    return [CLASSES[index] for index in indices]
-
-
-def labels_from_predictions(predictions: np.ndarray) -> list[str]:
-    indices = np.argmax(predictions, axis=1)
-    return [CLASSES[index] for index in indices]
-
-
-def compute_accuracy(expected_labels: list[str], predicted_labels: list[str]) -> float:
-    if len(expected_labels) != len(predicted_labels):
-        raise ValueError("Les listes de labels n'ont pas la même taille.")
-
-    if not expected_labels:
-        raise ValueError("Impossible de calculer l’accuracy sans exemples.")
-
-    correct_count = sum(
-        expected == predicted
-        for expected, predicted in zip(expected_labels, predicted_labels)
-    )
-
-    return correct_count / len(expected_labels)
-
-
-def compute_confusion_matrix(
-        expected_labels: list[str],
-        predicted_labels: list[str],
-) -> np.ndarray:
-    matrix = np.zeros((len(CLASSES), len(CLASSES)), dtype=np.int64)
-    class_to_index = {label: index for index, label in enumerate(CLASSES)}
-
-    for expected, predicted in zip(expected_labels, predicted_labels):
-        expected_index = class_to_index[expected]
-        predicted_index = class_to_index[predicted]
-        matrix[expected_index, predicted_index] += 1
-
-    return matrix
-
-
-def compute_recalls(confusion_matrix: np.ndarray) -> dict[str, float]:
-    recalls: dict[str, float] = {}
-
-    for class_index, class_name in enumerate(CLASSES):
-        row_total = int(confusion_matrix[class_index].sum())
-        if row_total == 0:
-            recalls[f"{class_name}_recall"] = 0.0
-        else:
-            recalls[f"{class_name}_recall"] = (
-                    float(confusion_matrix[class_index, class_index]) / row_total
-            )
-
-    return recalls
 
 
 def predict_one(model: int, x_sample: np.ndarray) -> np.ndarray:
@@ -466,141 +289,14 @@ def run_fold(
                      "train équilibré par sous-échantillonnage; "
                      if config.balanced_train
                      else ""
-                 ) + (
+                 )
+                 + (
                      "loss=1-accuracy car l’API MLP actuelle expose une prédiction "
                      "bipolaire, pas une fonction de perte continue."
                  ),
     }
 
     return fold_row, history_rows, confusion_matrix
-
-
-def write_folds_report(rows: list[dict[str, object]]) -> None:
-    with FOLDS_REPORT.open("w", newline="", encoding="utf-8") as csv_file:
-        fieldnames = [
-            "experiment",
-            "dataset",
-            "fold",
-            "hidden_sizes",
-            "learning_rate",
-            "epochs",
-            "balanced_train",
-            "train_samples",
-            "validation_samples",
-            "train_accuracy",
-            "validation_accuracy",
-            "train_loss",
-            "validation_loss",
-            "dog_recall",
-            "cat_recall",
-            "others_recall",
-            "notes",
-        ]
-
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for row in rows:
-            writer.writerow(row)
-
-
-def write_history_report(rows: list[dict[str, object]]) -> None:
-    with HISTORY_REPORT.open("w", newline="", encoding="utf-8") as csv_file:
-        fieldnames = [
-            "experiment",
-            "dataset",
-            "fold",
-            "epoch",
-            "hidden_sizes",
-            "learning_rate",
-            "balanced_train",
-            "train_samples",
-            "validation_samples",
-            "train_accuracy",
-            "validation_accuracy",
-            "train_loss",
-            "validation_loss",
-        ]
-
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for row in rows:
-            writer.writerow(row)
-
-
-def plot_learning_curves(history_rows: list[dict[str, object]]) -> None:
-    if not history_rows:
-        raise ValueError("Aucun historique disponible pour tracer les courbes.")
-
-    plt.figure(figsize=(10, 6))
-
-    folds = sorted({int(row["fold"]) for row in history_rows})
-
-    for fold in folds:
-        fold_rows = [row for row in history_rows if int(row["fold"]) == fold]
-        epochs = [int(row["epoch"]) for row in fold_rows]
-        train_values = [float(row["train_accuracy"]) for row in fold_rows]
-        validation_values = [float(row["validation_accuracy"]) for row in fold_rows]
-
-        plt.plot(
-            epochs,
-            train_values,
-            linestyle="--",
-            marker="o",
-            alpha=0.6,
-            label=f"Fold {fold} train",
-        )
-        plt.plot(
-            epochs,
-            validation_values,
-            linestyle="-",
-            marker="o",
-            alpha=0.9,
-            label=f"Fold {fold} validation",
-        )
-
-    plt.title("MLP — 64x64")
-    plt.xlabel("Époque")
-    plt.ylabel("Accuracy")
-    plt.ylim(0.0, 1.0)
-    plt.grid(True, alpha=0.3)
-    plt.legend(ncol=2, fontsize=8)
-    plt.tight_layout()
-    plt.savefig(CURVES_FIGURE, dpi=150)
-    plt.close()
-
-
-def plot_confusion_matrix(matrix: np.ndarray) -> None:
-    plt.figure(figsize=(6, 5))
-    plt.imshow(matrix, interpolation="nearest", cmap="Blues")
-    plt.title("MLP — matrice de confusion — validation croisée")
-    plt.colorbar()
-
-    tick_marks = np.arange(len(CLASSES))
-    plt.xticks(tick_marks, CLASSES)
-    plt.yticks(tick_marks, CLASSES)
-
-    threshold = matrix.max() / 2.0 if matrix.max() > 0 else 0.0
-
-    for row_index in range(matrix.shape[0]):
-        for column_index in range(matrix.shape[1]):
-            value = matrix[row_index, column_index]
-            color = "white" if value > threshold else "black"
-
-            plt.text(
-                column_index,
-                row_index,
-                str(value),
-                horizontalalignment="center",
-                color=color,
-            )
-
-    plt.ylabel("Classe réelle")
-    plt.xlabel("Classe prédite")
-    plt.tight_layout()
-    plt.savefig(CONFUSION_FIGURE, dpi=150)
-    plt.close()
 
 
 def parse_hidden_sizes(raw_value: str) -> list[int]:
@@ -715,7 +411,7 @@ def main() -> None:
     )
     validate_run_config(config)
 
-    ensure_output_directories()
+    ensure_directories(TABLES_DIR, CONFUSION_DIR, CURVES_DIR)
 
     rows = read_folds_csv()
     folds = select_folds(args.fold)
@@ -735,10 +431,14 @@ def main() -> None:
         history_rows.extend(fold_history_rows)
         total_confusion_matrix += fold_confusion_matrix
 
-    write_folds_report(fold_rows)
-    write_history_report(history_rows)
-    plot_learning_curves(history_rows)
-    plot_confusion_matrix(total_confusion_matrix)
+    write_csv(FOLDS_REPORT, fold_rows, fieldnames=FOLDS_FIELDNAMES)
+    write_csv(HISTORY_REPORT, history_rows, fieldnames=HISTORY_FIELDNAMES)
+    plot_learning_curves(history_rows, CURVES_FIGURE, "MLP — 64x64")
+    plot_confusion_matrix(
+        total_confusion_matrix,
+        CONFUSION_FIGURE,
+        "MLP — matrice de confusion — validation croisée",
+    )
 
     print("\nArtefacts écrits:")
     print(f"- {FOLDS_REPORT}")
