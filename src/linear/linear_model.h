@@ -58,6 +58,10 @@ int32_t linear_model_predict(
     double* y_pred
 );
 
+int32_t linear_model_save(const LinearModel* model, const char* path);
+
+LinearModel* linear_model_load(const char* path);
+
 void linear_model_destroy(LinearModel* model);
 
 #endif
